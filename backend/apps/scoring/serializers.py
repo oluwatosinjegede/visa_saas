@@ -5,7 +5,7 @@ from .models import ApplicantProfile, SOPSubmission
 class ApplicantProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = ApplicantProfile
-        fields = ['age', 'education', 'ielts', 'refusals', 'funds']
+        fields = ['age', 'country', 'education_level', 'work_experience']
 
 
 class SOPUploadSerializer(serializers.Serializer):
@@ -15,4 +15,4 @@ class SOPUploadSerializer(serializers.Serializer):
 class SOPResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = SOPSubmission
-        fields = ['id', 'score', 'feedback', 'created_at']
+        fields = ['id', 'score', 'feedback', 'result', 'created_at']

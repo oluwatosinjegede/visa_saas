@@ -23,6 +23,7 @@ class SOPSubmission(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     sop_text = models.TextField()
+    result = models.JSONField(default=dict, blank=True)
     score = models.FloatField(null=True, blank=True)
     feedback = models.TextField(blank=True)
 
