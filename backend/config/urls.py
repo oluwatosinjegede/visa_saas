@@ -1,7 +1,19 @@
 from django.contrib import admin
+from django.http import JsonResponse, HttpResponse
 from django.urls import include, path
 
+
+def root_status(request):
+    return JsonResponse({"service": "visa-saas", "status": "ok"})
+
+
+def favicon(request):
+    return HttpResponse(status=204)
+
+
 urlpatterns = [
+    path("", root_status, name="root-status"),
+    path("favicon.ico", favicon, name="favicon"),
     path("admin/", admin.site.urls),
     path("api/v1/auth/", include("apps.accounts.urls")),
     path("api/v1/visa/", include("apps.visa.urls")),
