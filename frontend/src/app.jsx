@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { fetchBackendHealth } from './services/api'
 import ModuleHealthCard from './components/ModuleHealthCard'
 
@@ -25,12 +25,36 @@ const steps = [
 
 export default function App() {
   const [modules, setModules] = useState([])
+  const [status, setStatus] = useState('loading')
 
   useEffect(() => {
-    fetchBackendHealth().then(setModules)
+    let mounted = true
+
+    const loadHealth = async () => {
+      setStatus('loading')
+      try {
+        const health = await fetchBackendHealth()
+        if (!mounted) return
+        setModules(health)
+        setStatus('ready')
+      } catch (error) {
+        if (!mounted) return
+        setModules([])
+        setStatus('error')
+      }
+    }
+
+    loadHealth()
+
+    return () => {
+      mounted = false
+    }
   }, [])
 
-  const healthyCount = modules.filter((item) => item.ok).length
+  const healthyCount = useMemo(
+    () => modules.filter((item) => item.ok).length,
+    [modules],
+  )
 
   return (
     <main className="homepage">
@@ -99,6 +123,12 @@ export default function App() {
             services healthy
           </p>
         </div>
+        
+        {status === 'loading' && <p className="status-msg">Checking backend modules…</p>}
+        {status === 'error' && (
+          <p className="status-msg error">Unable to load health status. Showing homepage content only.</p>
+        )}
+
         <div className="grid">
           {modules.map((module) => (
             <ModuleHealthCard key={module.name} module={module} />
