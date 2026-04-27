@@ -132,7 +132,6 @@ export function RegisterPage({ navigate }) {
       full_name: form.full_name.trim(),
       name: form.full_name.trim(),
       username: normalizedEmail,
-      email: normalizedEmail,
       password: form.password,
       password_confirm: form.password_confirm,
     }

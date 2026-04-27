@@ -1,4 +1,5 @@
 from django.urls import reverse
+from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -19,6 +20,8 @@ class AccountsAuthTests(APITestCase):
         self.assertIn("access", register_response.data)
         self.assertIn("refresh", register_response.data)
         self.assertEqual(register_response.data["user"]["email"], "test@example.com")
+        user = get_user_model().objects.get(email="test@example.com")
+        self.assertEqual(user.username, "test@example.com")
 
         login_response = self.client.post(
             reverse("accounts-login"),
