@@ -2,15 +2,15 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 const REQUEST_TIMEOUT_MS = 5000
 
 const MODULES = [
-  ['auth', '/auth/health/'],
+  ['accounts', '/auth/health/'],
   ['visa', '/visa/health/'],
   ['documents', '/documents/health/'],
-  ['ai', '/ai/health/'],
+  ['ai_assistant', '/ai/health/'],
   ['relocation', '/relocation/health/'],
   ['study', '/study/health/'],
   ['analytics', '/analytics/health/'],
   ['payments', '/payments/health/'],
-  ['admin', '/admin/health/'],
+  ['admin_portal', '/admin/health/'],
   ['notifications', '/notifications/health/'],
   ['compliance', '/compliance/health/'],
 ]
