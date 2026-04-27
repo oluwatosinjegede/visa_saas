@@ -23,6 +23,7 @@ class OrganizationType(models.TextChoices):
 
 
 class User(AbstractUser):
+    email = models.EmailField(unique=True)
     role = models.CharField(max_length=40, choices=Role.choices, default=Role.APPLICANT)
 
 

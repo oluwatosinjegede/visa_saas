@@ -11,7 +11,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "username", "email", "role", "full_name")
+        fields = ("id", "email", "role", "full_name")
 
     def get_full_name(self, obj):
         profile = getattr(obj, "userprofile", None)
@@ -29,7 +29,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
     name = serializers.CharField(max_length=255, required=False, allow_blank=True, write_only=True)
-    username = serializers.CharField(max_length=150, required=False, allow_blank=True)
     email = serializers.EmailField()
     password = serializers.CharField(min_length=8, write_only=True)
     password_confirm = serializers.CharField(required=False, allow_blank=True, write_only=True)
@@ -51,25 +50,16 @@ class RegisterSerializer(serializers.Serializer):
         if password_confirm and password_confirm != password:
             raise serializers.ValidationError({"password_confirm": ["Passwords do not match."]})
 
-        provisional_username = (attrs.get("username") or attrs.get("email") or "").strip().lower()
-        if not provisional_username:
-            raise serializers.ValidationError({"username": ["Username is required."]})
-
-        if User.objects.filter(username__iexact=provisional_username).exists():
-            raise serializers.ValidationError({"username": ["A user with this username already exists."]})
-
-        temp_user = User(username=provisional_username, email=attrs.get("email"))
+        email = attrs.get("email")
+        temp_user = User(username=email, email=email)
         validate_password(password, user=temp_user)
-
-        attrs["username"] = provisional_username
         return attrs
-
 
     def create(self, validated_data):
         email = validated_data["email"]
         username = validated_data["username"]
         user = User.objects.create_user(
-            username=username,
+            username=email,
             email=email,
             password=validated_data["password"],
             role=Role.APPLICANT,

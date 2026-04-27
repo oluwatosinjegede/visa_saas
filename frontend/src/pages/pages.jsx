@@ -109,21 +109,21 @@ export function RegisterPage({ navigate }) {
     setLocalError('')
 
     const missing = []
-    if (!form.full_name.trim()) missing.push('full_name: Full name is required.')
-    if (!form.email.trim()) missing.push('email: Email is required.')
-    if (!form.password) missing.push('password: Password is required.')
+    if (!form.full_name.trim()) missing.push('Full name is required.')
+    if (!form.email.trim()) missing.push('Email is required.')
+    if (!form.password) missing.push('Password is required.')
     if (missing.length) {
       setLocalError(missing.join('\n'))
       return
     }
 
     if (form.password.length < 8) {
-      setLocalError('password: Password must be at least 8 characters.')
+      setLocalError('Password must be at least 8 characters.')
       return
     }
 
     if (form.password_confirm && form.password !== form.password_confirm) {
-      setLocalError('password_confirm: Passwords do not match.')
+      setLocalError('Passwords do not match.')
       return
     }
 

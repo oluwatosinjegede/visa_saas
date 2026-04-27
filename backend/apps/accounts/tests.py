@@ -35,3 +35,38 @@ class AccountsAuthTests(APITestCase):
         self.assertEqual(profile_response.status_code, status.HTTP_200_OK)
         self.assertEqual(profile_response.data["email"], "test@example.com")
         self.assertEqual(profile_response.data["full_name"], "Test Applicant")
+
+    def test_register_requires_email(self):
+        response = self.client.post(
+            reverse("accounts-register"),
+            {"full_name": "No Email", "password": "StrongPass123"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("email", response.data)
+
+    def test_register_requires_password(self):
+        response = self.client.post(
+            reverse("accounts-register"),
+            {"full_name": "No Password", "email": "no-password@example.com"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", response.data)
+
+    def test_register_rejects_duplicate_email(self):
+        payload = {
+            "full_name": "First User",
+            "email": "duplicate@example.com",
+            "password": "StrongPass123",
+        }
+        first = self.client.post(reverse("accounts-register"), payload, format="json")
+        second = self.client.post(
+            reverse("accounts-register"),
+            {**payload, "full_name": "Second User"},
+            format="json",
+        )
+
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("email", second.data)

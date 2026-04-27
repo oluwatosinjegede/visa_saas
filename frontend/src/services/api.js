@@ -114,8 +114,21 @@ export const api = {
 }
 
 export function formatFieldErrors(fieldErrors = {}) {
+  const label = (field) => {
+    if (!field || field === 'non_field_errors' || field === 'detail') return ''
+    return field
+      .split('_')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ')
+  }
+
   return Object.entries(fieldErrors)
-    .flatMap(([field, messages]) => (messages || []).map((msg) => `${field}: ${msg}`))
+    .flatMap(([field, messages]) =>
+      (messages || []).map((msg) => {
+        const cleanLabel = label(field)
+        return cleanLabel ? `${cleanLabel}: ${msg}` : String(msg)
+      }),
+    )
     .join('\n')
 }
 
