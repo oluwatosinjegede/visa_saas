@@ -9,6 +9,14 @@ import { useAuth } from '../context/AuthContext'
 import { routes } from '../constants/routes'
 import { api, getApiErrorMessage } from '../services/api'
 
+const generateUsernameFromEmail = (email) => {
+  return String(email || '')
+    .trim()
+    .toLowerCase()
+    .split('@')[0]
+    .replace(/[^a-z0-9._-]/g, '')
+}
+
 export function HomePage({ navigate }) {
   const services = [
     ['Visa guidance', 'Personalized migration routes and requirement mapping.'],
@@ -26,9 +34,10 @@ export function HomePage({ navigate }) {
         <p className="eyebrow">Immigration-tech SaaS</p>
         <h1>VisaPilot helps you plan, score, and execute your global move.</h1>
         <p>
-          One platform for visa guidance, document preparedness, AI insights, study placement, job
-          relocation, consultant workflows, and secure payment access.
+          One platform for visa guidance, document preparedness, AI insights, study placement,
+          job relocation, consultant workflows, and secure payment access.
         </p>
+
         <div className="button-row">
           <button className="primary-btn" type="button" onClick={() => navigate(routes.login)}>
             Login
@@ -56,7 +65,12 @@ export function HomePage({ navigate }) {
           ['SOP Generator', routes.sopGenerator],
           ['Refusal Analysis', routes.refusalAnalysis],
         ].map(([label, path]) => (
-          <button key={path} type="button" className="card action-card" onClick={() => navigate(path)}>
+          <button
+            key={path}
+            type="button"
+            className="card action-card"
+            onClick={() => navigate(path)}
+          >
             {label}
           </button>
         ))}
@@ -72,27 +86,48 @@ export function LoginPage({ navigate }) {
 
   const submit = async (event) => {
     event.preventDefault()
+
     if (!email.trim() || !password) return
-    const result = await login({ email: email.trim(), password })
+
+    const result = await login({
+      email: email.trim().toLowerCase(),
+      password,
+    })
+
     if (result.ok) navigate(routes.dashboard)
   }
 
   return (
     <form className="card form" onSubmit={submit}>
       <h2>Login</h2>
-      <FormInput label="Email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+
+      <FormInput
+        label="Email"
+        name="email"
+        type="email"
+        autoComplete="email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+
       <FormInput
         label="Password"
+        name="password"
         type="password"
+        autoComplete="current-password"
         required
         minLength={8}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
+
       <AlertMessage type="error" message={authError} />
+
       <button className="primary-btn" type="submit" disabled={loading}>
         Sign In
       </button>
+
       {loading ? <LoadingSpinner label="Authenticating..." /> : null}
     </form>
   )
@@ -100,26 +135,41 @@ export function LoginPage({ navigate }) {
 
 export function RegisterPage({ navigate }) {
   const { register, loading, authError } = useAuth()
-  const [form, setForm] = useState({ full_name: '', email: '', password: '', password_confirm: '' })
+
+  const [form, setForm] = useState({
+    full_name: '',
+    email: '',
+    password: '',
+    password_confirm: '',
+  })
+
   const [localError, setLocalError] = useState('')
 
-  const onChange = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
+  const onChange = (key, value) => {
+    setForm((prev) => ({
+      ...prev,
+      [key]: value,
+    }))
+  }
+
   const submit = async (event) => {
     event.preventDefault()
     setLocalError('')
 
-    const formData = new FormData(event.currentTarget)
     const hydratedForm = {
-      full_name: String(formData.get('full_name') ?? form.full_name ?? ''),
-      email: String(formData.get('email') ?? form.email ?? ''),
-      password: String(formData.get('password') ?? form.password ?? ''),
-      password_confirm: String(formData.get('password_confirm') ?? form.password_confirm ?? ''),
+      full_name: form.full_name.trim(),
+      email: form.email.trim().toLowerCase(),
+      password: form.password,
+      password_confirm: form.password_confirm,
     }
 
     const missing = []
-    if (!hydratedForm.full_name.trim()) missing.push('Full name is required.')
-    if (!hydratedForm.email.trim()) missing.push('Email is required.')
+
+    if (!hydratedForm.full_name) missing.push('Full name is required.')
+    if (!hydratedForm.email) missing.push('Email is required.')
     if (!hydratedForm.password) missing.push('Password is required.')
+    if (!hydratedForm.password_confirm) missing.push('Confirm password is required.')
+
     if (missing.length) {
       setLocalError(missing.join('\n'))
       return
@@ -130,34 +180,77 @@ export function RegisterPage({ navigate }) {
       return
     }
 
-    if (hydratedForm.password_confirm && hydratedForm.password !== hydratedForm.password_confirm) {
+    if (hydratedForm.password !== hydratedForm.password_confirm) {
       setLocalError('Passwords do not match.')
       return
     }
-    
-    const normalizedEmail = hydratedForm.email.trim().toLowerCase()
+
     const payload = {
-      full_name: hydratedForm.full_name.trim(),
-      email: normalizedEmail,
+      username: generateUsernameFromEmail(hydratedForm.email),
+      full_name: hydratedForm.full_name,
+      email: hydratedForm.email,
       password: hydratedForm.password,
       password_confirm: hydratedForm.password_confirm,
     }
 
     setForm(hydratedForm)
+
     const result = await register(payload)
-    if (result.ok) navigate(routes.dashboard)
+
+    if (result.ok) {
+      navigate(routes.dashboard)
+    }
   }
 
   return (
     <form className="card form" onSubmit={submit}>
       <h2>Register</h2>
-      <FormInput label="Full Name" name="full_name" autoComplete="name" required value={form.full_name} onChange={(e) => onChange('full_name', e.target.value)} />
-      <FormInput label="Email" name="email" type="email" autoComplete="email" required value={form.email} onChange={(e) => onChange('email', e.target.value)} />
-      <FormInput label="Password" name="password" type="password" autoComplete="new-password" required minLength={8} value={form.password} onChange={(e) => onChange('password', e.target.value)} />
-      <FormInput label="Confirm Password" name="password_confirm" type="password" autoComplete="new-password" value={form.password_confirm} onChange={(e) => onChange('password_confirm', e.target.value)} />
+
+      <FormInput
+        label="Full Name"
+        name="full_name"
+        autoComplete="name"
+        required
+        value={form.full_name}
+        onChange={(e) => onChange('full_name', e.target.value)}
+      />
+
+      <FormInput
+        label="Email"
+        name="email"
+        type="email"
+        autoComplete="email"
+        required
+        value={form.email}
+        onChange={(e) => onChange('email', e.target.value)}
+      />
+
+      <FormInput
+        label="Password"
+        name="password"
+        type="password"
+        autoComplete="new-password"
+        required
+        minLength={8}
+        value={form.password}
+        onChange={(e) => onChange('password', e.target.value)}
+      />
+
+      <FormInput
+        label="Confirm Password"
+        name="password_confirm"
+        type="password"
+        autoComplete="new-password"
+        required
+        minLength={8}
+        value={form.password_confirm}
+        onChange={(e) => onChange('password_confirm', e.target.value)}
+      />
+
       <AlertMessage type="error" message={localError || authError} />
+
       <button className="primary-btn" type="submit" disabled={loading}>
-        Create Account
+        {loading ? 'Creating Account...' : 'Create Account'}
       </button>
     </form>
   )
@@ -169,7 +262,16 @@ export function DashboardPage({ navigate }) {
 
   React.useEffect(() => {
     let ignore = false
-    api.currentSubscription(accessToken).then((data) => !ignore && setSubscription(data)).catch(() => {})
+
+    if (!accessToken) return undefined
+
+    api
+      .currentSubscription(accessToken)
+      .then((data) => {
+        if (!ignore) setSubscription(data)
+      })
+      .catch(() => {})
+
     return () => {
       ignore = true
     }
@@ -178,18 +280,29 @@ export function DashboardPage({ navigate }) {
   return (
     <section className="stack">
       <h2>Dashboard</h2>
+
       <div className="grid-4">
-        <DashboardCard title="Profile" value={profile?.full_name || profile?.email || 'Applicant'} note="Account summary" />
+        <DashboardCard
+          title="Profile"
+          value={profile?.full_name || profile?.email || 'Applicant'}
+          note="Account summary"
+        />
         <DashboardCard title="Visa Readiness" value="72 / 100" note="AI scoring estimate" />
         <DashboardCard title="Document Status" value="8 / 12 ready" note="Pending reviews in queue" />
         <DashboardCard title="Active Applications" value="2" note="Study permit + work visa" />
       </div>
+
       <div className="card">
         <h3>Subscription Status</h3>
         <p>{subscription?.plan || 'No active plan found. Select a package to continue.'}</p>
       </div>
+
       <div className="button-row">
-        {[['Start Assessment', routes.visaAssessment], ['Upload Documents', routes.documents], ['Go to Payment', routes.payment]].map(([label, path]) => (
+        {[
+          ['Start Assessment', routes.visaAssessment],
+          ['Upload Documents', routes.documents],
+          ['Go to Payment', routes.payment],
+        ].map(([label, path]) => (
           <button key={path} className="secondary-btn" type="button" onClick={() => navigate(path)}>
             {label}
           </button>
@@ -200,7 +313,7 @@ export function DashboardPage({ navigate }) {
 }
 
 function GenericFormPage({ title, description, fields, onSubmitLabel = 'Submit', onSubmit }) {
-  const initial = useMemo(() => Object.fromEntries(fields.map((f) => [f.name, ''])), [fields])
+  const initial = useMemo(() => Object.fromEntries(fields.map((field) => [field.name, ''])), [fields])
   const [form, setForm] = useState(initial)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -208,6 +321,7 @@ function GenericFormPage({ title, description, fields, onSubmitLabel = 'Submit',
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+
     const missingFields = fields
       .filter((field) => field.required !== false && !String(form[field.name] || '').trim())
       .map((field) => `${field.label} is required.`)
@@ -220,6 +334,7 @@ function GenericFormPage({ title, description, fields, onSubmitLabel = 'Submit',
     setLoading(true)
     setError('')
     setMessage('')
+
     try {
       await onSubmit(form)
       setMessage('Submitted successfully.')
@@ -234,21 +349,30 @@ function GenericFormPage({ title, description, fields, onSubmitLabel = 'Submit',
     <form className="card form" onSubmit={handleSubmit}>
       <h2>{title}</h2>
       <p>{description}</p>
+
       {fields.map((field) => (
         <FormInput
           key={field.name}
           label={field.label}
+          name={field.name}
           as={field.type === 'textarea' ? 'textarea' : 'input'}
           type={field.type === 'textarea' ? undefined : field.type || 'text'}
           value={form[field.name]}
-          onChange={(e) => setForm((prev) => ({ ...prev, [field.name]: e.target.value }))}
+          onChange={(e) =>
+            setForm((prev) => ({
+              ...prev,
+              [field.name]: e.target.value,
+            }))
+          }
           required={field.required !== false}
         />
       ))}
+
       <AlertMessage type="success" message={message} />
       <AlertMessage type="error" message={error} />
+
       <button className="primary-btn" type="submit" disabled={loading}>
-        {onSubmitLabel}
+        {loading ? 'Submitting...' : onSubmitLabel}
       </button>
     </form>
   )
@@ -256,6 +380,7 @@ function GenericFormPage({ title, description, fields, onSubmitLabel = 'Submit',
 
 export function VisaAssessmentPage() {
   const { accessToken } = useAuth()
+
   return (
     <GenericFormPage
       title="Visa Assessment"
@@ -284,15 +409,25 @@ export function VisaAssessmentPage() {
 }
 
 export function DocumentChecklistPage() {
-  const rows = ['Passport', 'Bank statement', 'Admission letter', 'Employment letter', 'SOP', 'Invitation letter']
+  const rows = [
+    'Passport',
+    'Bank statement',
+    'Admission letter',
+    'Employment letter',
+    'SOP',
+    'Invitation letter',
+  ]
+
   return (
     <section className="card">
       <h2>Document Checklist</h2>
       <p>Track required documents by visa type with review statuses.</p>
+
       <ul className="status-list">
         {rows.map((row) => (
           <li key={row}>
-            <strong>{row}</strong> <span>missing / uploaded / under review / approved / rejected</span>
+            <strong>{row}</strong>{' '}
+            <span>missing / uploaded / under review / approved / rejected</span>
           </li>
         ))}
       </ul>
@@ -301,12 +436,26 @@ export function DocumentChecklistPage() {
 }
 
 export function DocumentsPage() {
+  const documents = [
+    'Passport',
+    'Bank statement',
+    'Admission letter',
+    'Employment letter',
+    'SOP',
+    'Invitation letter',
+    'Supporting documents',
+  ]
+
   return (
     <section className="card">
       <h2>Documents Upload</h2>
-      <p>Upload passport, bank statement, admission letter, employment letter, SOP, invitation letter, and supporting files.</p>
+      <p>
+        Upload passport, bank statement, admission letter, employment letter, SOP, invitation
+        letter, and supporting files.
+      </p>
+
       <div className="grid-3">
-        {['Passport', 'Bank statement', 'Admission letter', 'Employment letter', 'SOP', 'Invitation letter', 'Supporting documents'].map((item) => (
+        {documents.map((item) => (
           <label key={item} className="form-input card">
             <span>{item}</span>
             <input type="file" />
@@ -319,6 +468,7 @@ export function DocumentsPage() {
 
 export function SopGeneratorPage() {
   const { accessToken } = useAuth()
+
   return (
     <GenericFormPage
       title="SOP Generator"
@@ -340,6 +490,7 @@ export function SopGeneratorPage() {
 
 export function RefusalAnalysisPage() {
   const { accessToken } = useAuth()
+
   return (
     <GenericFormPage
       title="Refusal Analysis"
@@ -395,9 +546,14 @@ export function PricingPage({ navigate }) {
   return (
     <section className="stack">
       <h2>Pricing</h2>
+
       <div className="grid-3">
         {plans.map((plan) => (
-          <PlanCard key={plan.name} plan={plan} onSelect={() => navigate(`${routes.payment}?plan=${encodeURIComponent(plan.name)}`)} />
+          <PlanCard
+            key={plan.name}
+            plan={plan}
+            onSelect={() => navigate(`${routes.payment}?plan=${encodeURIComponent(plan.name)}`)}
+          />
         ))}
       </div>
     </section>
@@ -408,18 +564,25 @@ export function PaymentPage({ navigate }) {
   const { accessToken } = useAuth()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
   const search = new URLSearchParams(window.location.search)
   const selectedPlan = search.get('plan') || 'Starter'
 
   const startPayment = async () => {
     setLoading(true)
     setError('')
+
     try {
-      const result = await api.initializePayment(accessToken, { plan: selectedPlan, provider: 'paystack' })
+      const result = await api.initializePayment(accessToken, {
+        plan: selectedPlan,
+        provider: 'paystack',
+      })
+
       if (result?.authorization_url) {
         window.location.href = result.authorization_url
         return
       }
+
       navigate(routes.paymentSuccess)
     } catch (err) {
       setError(getApiErrorMessage(err, 'Payment initialization failed'))
@@ -434,24 +597,37 @@ export function PaymentPage({ navigate }) {
       <h2>Checkout</h2>
       <p>Selected plan: {selectedPlan}</p>
       <p>Paystack is configured as the primary payment provider.</p>
+
       <button className="primary-btn" type="button" onClick={startPayment} disabled={loading}>
-        Initialize payment
+        {loading ? 'Initializing...' : 'Initialize payment'}
       </button>
+
       <AlertMessage type="error" message={error} />
     </section>
   )
 }
 
 export function PaymentSuccessPage() {
-  return <section className="card"><h2>Payment Successful</h2><p>Your subscription is now active.</p></section>
+  return (
+    <section className="card">
+      <h2>Payment Successful</h2>
+      <p>Your subscription is now active.</p>
+    </section>
+  )
 }
 
 export function PaymentFailedPage() {
-  return <section className="card"><h2>Payment Failed</h2><p>We could not verify the transaction. Please retry from checkout.</p></section>
+  return (
+    <section className="card">
+      <h2>Payment Failed</h2>
+      <p>We could not verify the transaction. Please retry from checkout.</p>
+    </section>
+  )
 }
 
 export function ProfilePage() {
   const { profile } = useAuth()
+
   return (
     <section className="card">
       <h2>Profile</h2>
@@ -483,8 +659,8 @@ const adminRoles = [
 ]
 
 export function AdminDashboardPage() {
-
   const { accessToken } = useAuth()
+
   const [overview, setOverview] = useState(null)
   const [users, setUsers] = useState([])
   const [search, setSearch] = useState('')
@@ -493,11 +669,20 @@ export function AdminDashboardPage() {
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ full_name: '', email: '', role: 'APPLICANT', password: '' })
+
+  const [form, setForm] = useState({
+    full_name: '',
+    email: '',
+    role: 'APPLICANT',
+    password: '',
+  })
 
   const loadDashboard = React.useCallback(async () => {
+    if (!accessToken) return
+
     setLoading(true)
     setError('')
+
     try {
       const [overviewData, usersData] = await Promise.all([
         api.adminOverview(accessToken),
@@ -506,6 +691,7 @@ export function AdminDashboardPage() {
           ...(selectedRole ? { role: selectedRole } : {}),
         }),
       ])
+
       setOverview(overviewData)
       setUsers(usersData.results || [])
     } catch (err) {
@@ -521,19 +707,44 @@ export function AdminDashboardPage() {
 
   const onCreateUser = async (event) => {
     event.preventDefault()
+
     setSaving(true)
     setError('')
     setSuccess('')
+
     try {
+      const normalizedEmail = form.email.trim().toLowerCase()
+
+      if (!form.full_name.trim()) {
+        throw new Error('Full name is required.')
+      }
+
+      if (!normalizedEmail) {
+        throw new Error('Email is required.')
+      }
+
+      if (!form.password || form.password.length < 8) {
+        throw new Error('Password must be at least 8 characters.')
+      }
+
       await api.adminCreateUser(accessToken, {
+        username: generateUsernameFromEmail(normalizedEmail),
         full_name: form.full_name.trim(),
-        email: form.email.trim(),
+        email: normalizedEmail,
         role: form.role,
         password: form.password,
       })
+
       setSuccess('User created successfully.')
-      setForm({ full_name: '', email: '', role: 'APPLICANT', password: '' })
-      loadDashboard()
+
+      setForm({
+        full_name: '',
+        email: '',
+        role: 'APPLICANT',
+        password: '',
+      })
+
+      await loadDashboard()
     } catch (err) {
       setError(getApiErrorMessage(err, 'Unable to create user.'))
     } finally {
@@ -545,7 +756,9 @@ export function AdminDashboardPage() {
     <section className="stack">
       <h2>Admin Dashboard</h2>
       <p>Manage platform users, roles, and operational visibility from one place.</p>
+
       {loading ? <LoadingSpinner label="Loading admin dashboard..." /> : null}
+
       <AlertMessage type="error" message={error} />
       <AlertMessage type="success" message={success} />
 
@@ -558,33 +771,95 @@ export function AdminDashboardPage() {
       <div className="grid-3">
         <section className="card">
           <h3>Create User</h3>
+
           <form className="form" onSubmit={onCreateUser}>
-            <FormInput label="Full Name" required value={form.full_name} onChange={(e) => setForm((prev) => ({ ...prev, full_name: e.target.value }))} />
-            <FormInput label="Email" type="email" required value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
-            <FormInput label="Role" as="select" value={form.role} onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}>
+            <FormInput
+              label="Full Name"
+              name="full_name"
+              required
+              value={form.full_name}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  full_name: e.target.value,
+                }))
+              }
+            />
+
+            <FormInput
+              label="Email"
+              name="email"
+              type="email"
+              required
+              value={form.email}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  email: e.target.value,
+                }))
+              }
+            />
+
+            <FormInput
+              label="Role"
+              name="role"
+              as="select"
+              value={form.role}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  role: e.target.value,
+                }))
+              }
+            >
               {adminRoles.map((role) => (
-                <option key={role} value={role}>{role}</option>
+                <option key={role} value={role}>
+                  {role}
+                </option>
               ))}
             </FormInput>
-            <FormInput label="Temporary Password" type="password" required minLength={8} value={form.password} onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))} />
-            <button className="primary-btn" type="submit" disabled={saving}>{saving ? 'Creating...' : 'Create User'}</button>
+
+            <FormInput
+              label="Temporary Password"
+              name="password"
+              type="password"
+              required
+              minLength={8}
+              value={form.password}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  password: e.target.value,
+                }))
+              }
+            />
+
+            <button className="primary-btn" type="submit" disabled={saving}>
+              {saving ? 'Creating...' : 'Create User'}
+            </button>
           </form>
         </section>
 
         <section className="card">
           <h3>Role Breakdown</h3>
+
           <ul className="status-list">
             {(overview?.role_breakdown || []).map((item) => (
-              <li key={item.role}><strong>{item.role}</strong> <span>{item.total}</span></li>
+              <li key={item.role}>
+                <strong>{item.role}</strong> <span>{item.total}</span>
+              </li>
             ))}
           </ul>
         </section>
 
         <section className="card">
           <h3>Recent Users</h3>
+
           <ul className="status-list">
             {(overview?.recent_users || []).map((user) => (
-              <li key={user.id}><strong>{user.full_name || user.email}</strong> <span>{user.role}</span></li>
+              <li key={user.id}>
+                <strong>{user.full_name || user.email}</strong> <span>{user.role}</span>
+              </li>
             ))}
           </ul>
         </section>
@@ -592,21 +867,46 @@ export function AdminDashboardPage() {
 
       <section className="card">
         <div className="button-row">
-          <FormInput label="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <FormInput label="Filter role" as="select" value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)}>
+          <FormInput
+            label="Search"
+            name="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+          <FormInput
+            label="Filter role"
+            name="role_filter"
+            as="select"
+            value={selectedRole}
+            onChange={(e) => setSelectedRole(e.target.value)}
+          >
             <option value="">All roles</option>
             {adminRoles.map((role) => (
-              <option key={role} value={role}>{role}</option>
+              <option key={role} value={role}>
+                {role}
+              </option>
             ))}
           </FormInput>
-          <button className="secondary-btn" type="button" onClick={loadDashboard}>Refresh</button>
+
+          <button className="secondary-btn" type="button" onClick={loadDashboard}>
+            Refresh
+          </button>
         </div>
+
         <h3>Users</h3>
+
         <div className="table-wrap">
           <table className="admin-table">
             <thead>
-              <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+              </tr>
             </thead>
+
             <tbody>
               {users.map((user) => (
                 <tr key={user.id}>
@@ -625,5 +925,9 @@ export function AdminDashboardPage() {
 }
 
 export function NotFoundPage() {
-  return <section className="card"><h2>Page not found</h2></section>
+  return (
+    <section className="card">
+      <h2>Page not found</h2>
+    </section>
+  )
 }
