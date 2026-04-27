@@ -1,0 +1,32 @@
+export const routes = {
+  home: '/',
+  login: '/login',
+  register: '/register',
+  dashboard: '/dashboard',
+  visaAssessment: '/visa-assessment',
+  documentChecklist: '/document-checklist',
+  documents: '/documents',
+  sopGenerator: '/sop-generator',
+  refusalAnalysis: '/refusal-analysis',
+  studyPlacement: '/study-placement',
+  jobRelocation: '/job-relocation',
+  pricing: '/pricing',
+  payment: '/payment',
+  paymentSuccess: '/payment-success',
+  paymentFailed: '/payment-failed',
+  profile: '/profile',
+  consultantDashboard: '/consultant-dashboard',
+  adminDashboard: '/admin-dashboard',
+}
+
+export const protectedPaths = new Set([
+  routes.dashboard,
+  routes.visaAssessment,
+  routes.documents,
+  routes.sopGenerator,
+  routes.refusalAnalysis,
+  routes.studyPlacement,
+  routes.jobRelocation,
+  routes.payment,
+  routes.profile,
+])

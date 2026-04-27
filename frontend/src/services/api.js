@@ -1,44 +1,68 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
-const REQUEST_TIMEOUT_MS = 5000
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://visapilot.up.railway.app/api/v1'
 
-const MODULES = [
-  ['accounts', '/auth/health/'],
-  ['visa', '/visa/health/'],
-  ['documents', '/documents/health/'],
-  ['ai_assistant', '/ai/health/'],
-  ['relocation', '/relocation/health/'],
-  ['study', '/study/health/'],
-  ['analytics', '/analytics/health/'],
-  ['payments', '/payments/health/'],
-  ['admin_portal', '/admin/health/'],
-  ['notifications', '/notifications/health/'],
-  ['compliance', '/compliance/health/'],
-]
-
-async function fetchWithTimeout(url) {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
-
-  try {
-    return await fetch(url, { signal: controller.signal })
-  } finally {
-    clearTimeout(timeout)
-  }
+const defaultHeaders = {
+  'Content-Type': 'application/json',
 }
 
-export async function fetchBackendHealth() {
-  const results = await Promise.all(
-    MODULES.map(async ([name, path]) => {
-      try {
-        const response = await fetchWithTimeout(`${API_BASE}${path}`)
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-        const payload = await response.json()
-        return { name, ok: true, payload }
-      } catch (error) {
-        return { name, ok: false, error: error.message || 'Request failed' }
-      }
-    }),
-  )
+async function request(path, options = {}) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      ...defaultHeaders,
+      ...(options.headers || {}),
+    },
+  })
 
-  return results
+  const contentType = response.headers.get('content-type') || ''
+  const payload = contentType.includes('application/json') ? await response.json() : await response.text()
+
+  if (!response.ok) {
+    throw new Error(payload?.detail || payload?.message || `Request failed (${response.status})`)
+  }
+
+  return payload
+}
+
+export const api = {
+  apiBaseUrl: API_BASE_URL,
+  login: (credentials) => request('/auth/login/', { method: 'POST', body: JSON.stringify(credentials) }),
+  register: (data) => request('/auth/register/', { method: 'POST', body: JSON.stringify(data) }),
+  getProfile: (token) =>
+    request('/auth/profile/', { headers: { Authorization: `Bearer ${token}` } }),
+  submitVisaAssessment: (token, data) =>
+    request('/scoring/profile/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  generateSOP: (token, data) =>
+    request('/ai/sop-generator/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  analyzeRefusal: (token, data) =>
+    request('/ai/refusal-analysis/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+    initializePayment: (token, data) =>
+    request('/payments/initialize/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  verifyPayment: (token, reference) =>
+    request(`/payments/verify/?reference=${encodeURIComponent(reference)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  currentSubscription: (token) =>
+    request('/subscriptions/current/', {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+}
+
+export function getApiErrorMessage(error, fallback = 'Something went wrong. Please try again.') {
+  return error?.message || fallback
 }
