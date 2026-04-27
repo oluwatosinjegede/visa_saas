@@ -75,8 +75,27 @@ async function request(path, options = {}) {
 
 export const api = {
   apiBaseUrl: API_BASE_URL,
-  login: (credentials) => request('/auth/login/', { method: 'POST', body: JSON.stringify(credentials) }),
-  register: (data) => request('/auth/register/', { method: 'POST', body: JSON.stringify(data) }),
+  login: (credentials = {}) => {
+    const normalizedEmail = (credentials.email || credentials.username || '').trim().toLowerCase()
+    return request('/auth/login/', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...credentials,
+        email: normalizedEmail,
+      }),
+    })
+  },
+  register: (data = {}) => {
+    const normalizedEmail = (data.email || data.username || '').trim().toLowerCase()
+    return request('/auth/register/', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...data,
+        email: normalizedEmail,
+        username: normalizedEmail,
+      }),
+    })
+  },
   getProfile: (token) =>
     request('/auth/profile/', { headers: { Authorization: `Bearer ${token}` } }),
   submitVisaAssessment: (token, data) =>
