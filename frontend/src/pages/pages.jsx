@@ -72,7 +72,8 @@ export function LoginPage({ navigate }) {
 
   const submit = async (event) => {
     event.preventDefault()
-    const result = await login({ email, password })
+    if (!email.trim() || !password) return
+    const result = await login({ email: email.trim(), password })
     if (result.ok) navigate(routes.dashboard)
   }
 
@@ -99,12 +100,41 @@ export function LoginPage({ navigate }) {
 
 export function RegisterPage({ navigate }) {
   const { register, loading, authError } = useAuth()
-  const [form, setForm] = useState({ full_name: '', email: '', password: '' })
+  const [form, setForm] = useState({ full_name: '', email: '', password: '', password_confirm: '' })
+  const [localError, setLocalError] = useState('')
 
   const onChange = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
   const submit = async (event) => {
     event.preventDefault()
-    const result = await register(form)
+    setLocalError('')
+
+    const missing = []
+    if (!form.full_name.trim()) missing.push('full_name: Full name is required.')
+    if (!form.email.trim()) missing.push('email: Email is required.')
+    if (!form.password) missing.push('password: Password is required.')
+    if (missing.length) {
+      setLocalError(missing.join('\n'))
+      return
+    }
+
+    if (form.password.length < 8) {
+      setLocalError('password: Password must be at least 8 characters.')
+      return
+    }
+
+    if (form.password_confirm && form.password !== form.password_confirm) {
+      setLocalError('password_confirm: Passwords do not match.')
+      return
+    }
+
+    const payload = {
+      full_name: form.full_name.trim(),
+      email: form.email.trim(),
+      password: form.password,
+      password_confirm: form.password_confirm,
+    }
+
+    const result = await register(payload)
     if (result.ok) navigate(routes.dashboard)
   }
 
@@ -114,7 +144,8 @@ export function RegisterPage({ navigate }) {
       <FormInput label="Full Name" required value={form.full_name} onChange={(e) => onChange('full_name', e.target.value)} />
       <FormInput label="Email" type="email" required value={form.email} onChange={(e) => onChange('email', e.target.value)} />
       <FormInput label="Password" type="password" required minLength={8} value={form.password} onChange={(e) => onChange('password', e.target.value)} />
-      <AlertMessage type="error" message={authError} />
+      <FormInput label="Confirm Password" type="password" value={form.password_confirm} onChange={(e) => onChange('password_confirm', e.target.value)} />
+      <AlertMessage type="error" message={localError || authError} />
       <button className="primary-btn" type="submit" disabled={loading}>
         Create Account
       </button>
@@ -167,6 +198,15 @@ function GenericFormPage({ title, description, fields, onSubmitLabel = 'Submit',
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+    const missingFields = fields
+      .filter((field) => field.required !== false && !String(form[field.name] || '').trim())
+      .map((field) => `${field.label} is required.`)
+
+    if (missingFields.length) {
+      setError(missingFields.join('\n'))
+      return
+    }
+
     setLoading(true)
     setError('')
     setMessage('')
@@ -221,7 +261,14 @@ export function VisaAssessmentPage() {
         { name: 'family_ties', label: 'Family ties' },
         { name: 'purpose_of_travel', label: 'Purpose of travel', type: 'textarea' },
       ]}
-      onSubmit={(data) => api.submitVisaAssessment(accessToken, data)}
+      onSubmit={(data) =>
+        api.submitVisaAssessment(accessToken, {
+          age: Number(data.age),
+          country: data.destination_country,
+          education_level: data.education_level,
+          work_experience: data.work_experience,
+        })
+      }
     />
   )
 }

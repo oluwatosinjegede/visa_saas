@@ -46,25 +46,25 @@ class SOPUploadView(APIView):
 
         file = serializer.validated_data["file"]
 
-        # 🔥 Extract text safely
+        # Extract text safely
         try:
             sop_text = extract_text_from_file(file)
         except Exception as e:
             return Response(
-                {"error": "Failed to read file"},
+                {"message": "SOP upload failed", "errors": {"file": ["Failed to read file"]}},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 🔥 Get user profile
+        # Get user profile
         profile = ApplicantProfile.objects.filter(user=request.user).first()
 
         if not profile:
             return Response(
-                {"error": "Please complete your profile first"},
+                {"message": "SOP upload failed", "errors": {"profile": ["Please complete your profile first"]}},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 🔥 AI ANALYSIS
+        # AI ANALYSIS
         try:
             result = analyze_application(profile, sop_text)
         except Exception as e:
@@ -73,7 +73,7 @@ class SOPUploadView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        # 🔥 Save submission
+        # Save submission
         submission = SOPSubmission.objects.create(
             user=request.user,
             sop_text=sop_text,
@@ -90,7 +90,7 @@ class SOPUploadView(APIView):
         )
 
 
-# 🔹 GET USER RESULTS
+# GET USER RESULTS
 class UserResultsView(APIView):
     permission_classes = [IsAuthenticated]
 

@@ -1,11 +1,14 @@
 from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 from .models import Role, UserProfile, User
 
 
 class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = ("id", "username", "email", "role", "full_name")
@@ -23,21 +26,48 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-
 class RegisterSerializer(serializers.Serializer):
-    full_name = serializers.CharField(max_length=255)
+    full_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    name = serializers.CharField(max_length=255, required=False, allow_blank=True, write_only=True)
+    username = serializers.CharField(max_length=150, required=False, allow_blank=True)
     email = serializers.EmailField()
     password = serializers.CharField(min_length=8, write_only=True)
+    password_confirm = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     def validate_email(self, value):
         email = value.lower().strip()
         if User.objects.filter(email__iexact=email).exists():
             raise serializers.ValidationError("A user with this email already exists.")
         return email
+    
+    def validate(self, attrs):
+        full_name = (attrs.get("full_name") or attrs.get("name") or "").strip()
+        if not full_name:
+            raise serializers.ValidationError({"full_name": ["Full name is required."]})
+        attrs["full_name"] = full_name
+
+        password = attrs.get("password")
+        password_confirm = attrs.get("password_confirm")
+        if password_confirm and password_confirm != password:
+            raise serializers.ValidationError({"password_confirm": ["Passwords do not match."]})
+
+        provisional_username = (attrs.get("username") or attrs.get("email") or "").strip().lower()
+        if not provisional_username:
+            raise serializers.ValidationError({"username": ["Username is required."]})
+
+        if User.objects.filter(username__iexact=provisional_username).exists():
+            raise serializers.ValidationError({"username": ["A user with this username already exists."]})
+
+        temp_user = User(username=provisional_username, email=attrs.get("email"))
+        validate_password(password, user=temp_user)
+
+        attrs["username"] = provisional_username
+        return attrs
+
 
     def create(self, validated_data):
         email = validated_data["email"]
-        username = email
+        username = validated_data["username"]
         user = User.objects.create_user(
             username=username,
             email=email,

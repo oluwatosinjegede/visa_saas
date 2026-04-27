@@ -4,6 +4,54 @@ const defaultHeaders = {
   'Content-Type': 'application/json',
 }
 
+class ApiError extends Error {
+  constructor(message, { status, payload, fieldErrors } = {}) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.payload = payload
+    this.fieldErrors = fieldErrors || {}
+  }
+}
+
+function normalizeFieldErrors(payload) {
+  if (!payload || typeof payload !== 'object') return {}
+
+  if (payload.errors && typeof payload.errors === 'object') {
+    return payload.errors
+  }
+
+  if (payload.detail) {
+    return { detail: [String(payload.detail)] }
+  }
+
+  return Object.entries(payload).reduce((acc, [key, value]) => {
+    if (Array.isArray(value)) {
+      acc[key] = value.map((item) => String(item))
+      return acc
+    }
+
+    if (typeof value === 'string') {
+      acc[key] = [value]
+      return acc
+    }
+
+    return acc
+  }, {})
+}
+
+function buildMessage(status, payload, fieldErrors) {
+  if (payload?.message) return payload.message
+  if (payload?.detail) return String(payload.detail)
+
+  const firstField = Object.keys(fieldErrors)[0]
+  if (firstField && fieldErrors[firstField]?.length) {
+    return fieldErrors[firstField][0]
+  }
+
+  return `Request failed (${status})`
+}
+
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -17,7 +65,9 @@ async function request(path, options = {}) {
   const payload = contentType.includes('application/json') ? await response.json() : await response.text()
 
   if (!response.ok) {
-    throw new Error(payload?.detail || payload?.message || `Request failed (${response.status})`)
+    const fieldErrors = normalizeFieldErrors(payload)
+    const message = buildMessage(response.status, payload, fieldErrors)
+    throw new ApiError(message, { status: response.status, payload, fieldErrors })
   }
 
   return payload
@@ -47,7 +97,7 @@ export const api = {
       body: JSON.stringify(data),
       headers: { Authorization: `Bearer ${token}` },
     }),
-    initializePayment: (token, data) =>
+  initializePayment: (token, data) =>
     request('/payments/initialize/', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -58,11 +108,22 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
     }),
   currentSubscription: (token) =>
-    request('/subscriptions/current/', {
+    request('/payments/current-subscription/', {
       headers: { Authorization: `Bearer ${token}` },
     }),
 }
 
+export function formatFieldErrors(fieldErrors = {}) {
+  return Object.entries(fieldErrors)
+    .flatMap(([field, messages]) => (messages || []).map((msg) => `${field}: ${msg}`))
+    .join('\n')
+}
+
 export function getApiErrorMessage(error, fallback = 'Something went wrong. Please try again.') {
+  if (error?.fieldErrors && Object.keys(error.fieldErrors).length) {
+    return formatFieldErrors(error.fieldErrors)
+  }
   return error?.message || fallback
 }
+
+export { ApiError }
