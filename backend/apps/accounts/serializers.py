@@ -29,6 +29,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
     name = serializers.CharField(max_length=255, required=False, allow_blank=True, write_only=True)
+    username = serializers.CharField(max_length=150, required=False, allow_blank=True, write_only=True)
     email = serializers.EmailField()
     password = serializers.CharField(min_length=8, write_only=True)
     password_confirm = serializers.CharField(required=False, allow_blank=True, write_only=True)
@@ -51,14 +52,21 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError({"password_confirm": ["Passwords do not match."]})
 
         email = attrs.get("email")
-        temp_user = User(username=email, email=email)
+        username = (attrs.get("username") or email).strip().lower()
+        attrs["username"] = username
+
+        if User.objects.filter(username__iexact=username).exists():
+            raise serializers.ValidationError({"username": ["A user with this username already exists."]})
+
+        temp_user = User(username=username, email=email)
         validate_password(password, user=temp_user)
         return attrs
 
     def create(self, validated_data):
         email = validated_data["email"]
+        username = validated_data.get("username") or email
         user = User.objects.create_user(
-            username=email,
+            username=username,
             email=email,
             password=validated_data["password"],
             role=Role.APPLICANT,

@@ -126,10 +126,13 @@ export function RegisterPage({ navigate }) {
       setLocalError('Passwords do not match.')
       return
     }
-
+    
+    const normalizedEmail = form.email.trim()
     const payload = {
       full_name: form.full_name.trim(),
-      email: form.email.trim(),
+      name: form.full_name.trim(),
+      username: normalizedEmail,
+      email: normalizedEmail,
       password: form.password,
       password_confirm: form.password_confirm,
     }
