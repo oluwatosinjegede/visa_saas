@@ -91,9 +91,10 @@ export const api = {
   return request('/auth/register/', {
     method: 'POST',
     body: JSON.stringify({
-      full_name: data.full_name,
+      full_name: data.full_name?.trim(),
       email: normalizedEmail,
       password: data.password,
+      password_confirm: data.password_confirm || '',
     }),
   })
 },
