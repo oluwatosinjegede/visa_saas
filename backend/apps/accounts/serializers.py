@@ -30,6 +30,7 @@ class RegisterSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=255, required=True)
     email = serializers.EmailField(required=True)
     password = serializers.CharField(min_length=8, write_only=True)
+    password_confirm = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     def validate_email(self, value):
         email = value.lower().strip()
@@ -44,32 +45,38 @@ class RegisterSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         full_name = attrs.get("full_name", "").strip()
+        email = attrs.get("email", "").lower().strip()
         password = attrs.get("password")
-        email = attrs.get("email")
+        password_confirm = attrs.get("password_confirm")
 
         if not full_name:
             raise serializers.ValidationError({"full_name": ["Full name is required."]})
 
+        if password_confirm and password_confirm != password:
+            raise serializers.ValidationError({"password_confirm": ["Passwords do not match."]})
+
         temp_user = User(username=email, email=email)
         validate_password(password, user=temp_user)
+
+        attrs["email"] = email
+        attrs["username"] = email
+        attrs["full_name"] = full_name
 
         return attrs
 
     def create(self, validated_data):
-        full_name = validated_data["full_name"].strip()
-        email = validated_data["email"].lower().strip()
+        full_name = validated_data["full_name"]
+        email = validated_data["email"]
         password = validated_data["password"]
 
         names = full_name.split(" ", 1)
-        first_name = names[0]
-        last_name = names[1] if len(names) > 1 else ""
 
         user = User.objects.create_user(
             username=email,
             email=email,
             password=password,
-            first_name=first_name,
-            last_name=last_name,
+            first_name=names[0],
+            last_name=names[1] if len(names) > 1 else "",
             role=Role.APPLICANT,
         )
 
@@ -80,7 +87,6 @@ class RegisterSerializer(serializers.Serializer):
         )
 
         return user
-
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     email = serializers.EmailField(required=True)

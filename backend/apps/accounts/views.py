@@ -29,6 +29,8 @@ class RegisterView(APIView):
         )
         token_serializer.is_valid(raise_exception=True)
 
+        print("REGISTER REQUEST:", request.data)
+
         return Response({"message": "Registration successful", **token_serializer.validated_data}, status=status.HTTP_201_CREATED)
 
 
