@@ -27,52 +27,58 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class RegisterSerializer(serializers.Serializer):
-    full_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
-    name = serializers.CharField(max_length=255, required=False, allow_blank=True, write_only=True)
-    email = serializers.EmailField()
+    full_name = serializers.CharField(max_length=255, required=True)
+    email = serializers.EmailField(required=True)
     password = serializers.CharField(min_length=8, write_only=True)
-    password_confirm = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     def validate_email(self, value):
         email = value.lower().strip()
+
         if User.objects.filter(email__iexact=email).exists():
             raise serializers.ValidationError("A user with this email already exists.")
-        return email
-    
-    def validate(self, attrs):
-        full_name = (attrs.get("full_name") or attrs.get("name") or "").strip()
-        if not full_name:
-            raise serializers.ValidationError({"full_name": ["Full name is required."]})
-        attrs["full_name"] = full_name
-
-        password = attrs.get("password")
-        password_confirm = attrs.get("password_confirm")
-        if password_confirm and password_confirm != password:
-            raise serializers.ValidationError({"password_confirm": ["Passwords do not match."]})
-
-        email = attrs.get("email")
-        attrs["username"] = email
 
         if User.objects.filter(username__iexact=email).exists():
-            raise serializers.ValidationError({"email": ["A user with this email already exists."]})
+            raise serializers.ValidationError("A user with this email already exists.")
+
+        return email
+
+    def validate(self, attrs):
+        full_name = attrs.get("full_name", "").strip()
+        password = attrs.get("password")
+        email = attrs.get("email")
+
+        if not full_name:
+            raise serializers.ValidationError({"full_name": ["Full name is required."]})
 
         temp_user = User(username=email, email=email)
         validate_password(password, user=temp_user)
+
         return attrs
 
     def create(self, validated_data):
-        email = validated_data["email"]
+        full_name = validated_data["full_name"].strip()
+        email = validated_data["email"].lower().strip()
+        password = validated_data["password"]
+
+        names = full_name.split(" ", 1)
+        first_name = names[0]
+        last_name = names[1] if len(names) > 1 else ""
+
         user = User.objects.create_user(
             username=email,
             email=email,
-            password=validated_data["password"],
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
             role=Role.APPLICANT,
         )
+
         UserProfile.objects.create(
             user=user,
-            full_name=validated_data["full_name"],
+            full_name=full_name,
             email=email,
         )
+
         return user
 
 

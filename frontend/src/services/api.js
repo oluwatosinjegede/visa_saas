@@ -86,16 +86,17 @@ export const api = {
     })
   },
   register: (data = {}) => {
-    const normalizedEmail = (data.email || data.username || '').trim().toLowerCase()
-    return request('/auth/register/', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...data,
-        email: normalizedEmail,
-        username: normalizedEmail,
-      }),
-    })
-  },
+  const normalizedEmail = (data.email || '').trim().toLowerCase()
+
+  return request('/auth/register/', {
+    method: 'POST',
+    body: JSON.stringify({
+      full_name: data.full_name,
+      email: normalizedEmail,
+      password: data.password,
+    }),
+  })
+},
   getProfile: (token) =>
     request('/auth/profile/', { headers: { Authorization: `Bearer ${token}` } }),
   submitVisaAssessment: (token, data) =>
