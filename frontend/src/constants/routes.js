@@ -29,4 +29,6 @@ export const protectedPaths = new Set([
   routes.jobRelocation,
   routes.payment,
   routes.profile,
+  routes.consultantDashboard,
+  routes.adminDashboard,
 ])

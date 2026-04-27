@@ -460,11 +460,156 @@ export function ConsultantDashboardPage() {
   )
 }
 
+const adminRoles = [
+  'SUPER_ADMIN',
+  'PLATFORM_ADMIN',
+  'APPLICANT',
+  'IMMIGRATION_CONSULTANT',
+  'RECRUITER',
+  'EMPLOYER',
+  'SCHOOL_ADMIN',
+  'AGENT',
+  'SUPPORT_STAFF',
+]
+
 export function AdminDashboardPage() {
+
+  const { accessToken } = useAuth()
+  const [overview, setOverview] = useState(null)
+  const [users, setUsers] = useState([])
+  const [search, setSearch] = useState('')
+  const [selectedRole, setSelectedRole] = useState('')
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({ full_name: '', email: '', role: 'APPLICANT', password: '' })
+
+  const loadDashboard = React.useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const [overviewData, usersData] = await Promise.all([
+        api.adminOverview(accessToken),
+        api.adminListUsers(accessToken, {
+          ...(search.trim() ? { q: search.trim() } : {}),
+          ...(selectedRole ? { role: selectedRole } : {}),
+        }),
+      ])
+      setOverview(overviewData)
+      setUsers(usersData.results || [])
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Unable to load admin dashboard.'))
+    } finally {
+      setLoading(false)
+    }
+  }, [accessToken, search, selectedRole])
+
+  React.useEffect(() => {
+    loadDashboard()
+  }, [loadDashboard])
+
+  const onCreateUser = async (event) => {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    setSuccess('')
+    try {
+      await api.adminCreateUser(accessToken, {
+        full_name: form.full_name.trim(),
+        email: form.email.trim(),
+        role: form.role,
+        password: form.password,
+      })
+      setSuccess('User created successfully.')
+      setForm({ full_name: '', email: '', role: 'APPLICANT', password: '' })
+      loadDashboard()
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Unable to create user.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
-    <section className="card">
+    <section className="stack">
       <h2>Admin Dashboard</h2>
-      <p>Platform-level visibility for users, reviews, payments, consultant notes, and analytics.</p>
+      <p>Manage platform users, roles, and operational visibility from one place.</p>
+      {loading ? <LoadingSpinner label="Loading admin dashboard..." /> : null}
+      <AlertMessage type="error" message={error} />
+      <AlertMessage type="success" message={success} />
+
+      <div className="grid-3">
+        <DashboardCard title="Total Users" value={overview?.total_users ?? 0} note="All registered accounts" />
+        <DashboardCard title="Active Users" value={overview?.active_users ?? 0} note="Accounts currently enabled" />
+        <DashboardCard title="Inactive Users" value={overview?.inactive_users ?? 0} note="Accounts currently disabled" />
+      </div>
+
+      <div className="grid-3">
+        <section className="card">
+          <h3>Create User</h3>
+          <form className="form" onSubmit={onCreateUser}>
+            <FormInput label="Full Name" required value={form.full_name} onChange={(e) => setForm((prev) => ({ ...prev, full_name: e.target.value }))} />
+            <FormInput label="Email" type="email" required value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
+            <FormInput label="Role" as="select" value={form.role} onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}>
+              {adminRoles.map((role) => (
+                <option key={role} value={role}>{role}</option>
+              ))}
+            </FormInput>
+            <FormInput label="Temporary Password" type="password" required minLength={8} value={form.password} onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))} />
+            <button className="primary-btn" type="submit" disabled={saving}>{saving ? 'Creating...' : 'Create User'}</button>
+          </form>
+        </section>
+
+        <section className="card">
+          <h3>Role Breakdown</h3>
+          <ul className="status-list">
+            {(overview?.role_breakdown || []).map((item) => (
+              <li key={item.role}><strong>{item.role}</strong> <span>{item.total}</span></li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="card">
+          <h3>Recent Users</h3>
+          <ul className="status-list">
+            {(overview?.recent_users || []).map((user) => (
+              <li key={user.id}><strong>{user.full_name || user.email}</strong> <span>{user.role}</span></li>
+            ))}
+          </ul>
+        </section>
+      </div>
+
+      <section className="card">
+        <div className="button-row">
+          <FormInput label="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <FormInput label="Filter role" as="select" value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)}>
+            <option value="">All roles</option>
+            {adminRoles.map((role) => (
+              <option key={role} value={role}>{role}</option>
+            ))}
+          </FormInput>
+          <button className="secondary-btn" type="button" onClick={loadDashboard}>Refresh</button>
+        </div>
+        <h3>Users</h3>
+        <div className="table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <td>{user.full_name || '—'}</td>
+                  <td>{user.email}</td>
+                  <td>{user.role}</td>
+                  <td>{user.is_active ? 'Active' : 'Inactive'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </section>
   )
 }

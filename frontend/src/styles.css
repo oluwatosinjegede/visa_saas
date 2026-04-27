@@ -44,6 +44,10 @@ body { margin: 0; background: radial-gradient(circle at top, #0f172a, #020617 55
 .loading-spinner { margin-top: .7rem; color: #7dd3fc; }
 .metric { font-size: 1.4rem; color: #f8fafc; margin: .5rem 0; }
 .status-list { display: grid; gap: .5rem; padding-left: 1rem; }
+.table-wrap { overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; }
+.admin-table th, .admin-table td { border-bottom: 1px solid #334155; padding: .55rem .4rem; text-align: left; }
+.admin-table th { color: #93c5fd; font-weight: 600; }
 .plan-price { color: #7dd3fc; font-size: 1.2rem; font-weight: 600; }
 .eyebrow { color: #38bdf8; text-transform: uppercase; letter-spacing: .1em; font-size: .75rem; }
 

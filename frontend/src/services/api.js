@@ -111,6 +111,22 @@ export const api = {
     request('/payments/current-subscription/', {
       headers: { Authorization: `Bearer ${token}` },
     }),
+  adminOverview: (token) =>
+    request('/admin/overview/', {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  adminListUsers: (token, params = {}) => {
+    const query = new URLSearchParams(params).toString()
+    return request(`/admin/users/${query ? `?${query}` : ''}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  },
+  adminCreateUser: (token, data) =>
+    request('/admin/users/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${token}` },
+    }),
 }
 
 export function formatFieldErrors(fieldErrors = {}) {
