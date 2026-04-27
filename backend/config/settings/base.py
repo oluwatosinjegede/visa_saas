@@ -65,7 +65,7 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "visapilot-frontend.up.railway.app",
+    "https://visapilot-frontend.up.railway.app",
 ]
 ROOT_URLCONF = "config.urls"
 
