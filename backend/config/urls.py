@@ -1,10 +1,14 @@
 from django.contrib import admin
-from django.http import JsonResponse, HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.urls import include, path
 
 
 def root_status(request):
-    return JsonResponse({"service": "visa-saas", "status": "ok"})
+    return JsonResponse({
+        "service": "visa-saas",
+        "status": "ok",
+        "api_version": "v1",
+    })
 
 
 def favicon(request):
@@ -14,7 +18,9 @@ def favicon(request):
 urlpatterns = [
     path("", root_status, name="root-status"),
     path("favicon.ico", favicon, name="favicon"),
+
     path("admin/", admin.site.urls),
+
     path("api/v1/auth/", include("apps.accounts.urls")),
     path("api/v1/visa/", include("apps.visa.urls")),
     path("api/v1/documents/", include("apps.documents.urls")),
