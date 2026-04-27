@@ -1,3 +1,4 @@
+import React from 'react'
 export default function ModuleHealthCard({ module }) {
   return (
     <article className={`card ${module.ok ? 'ok' : 'bad'}`}>

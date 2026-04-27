@@ -1,3 +1,4 @@
+import React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { fetchBackendHealth } from './services/api'
 import ModuleHealthCard from './components/ModuleHealthCard'
