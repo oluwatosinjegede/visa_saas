@@ -108,33 +108,42 @@ export function RegisterPage({ navigate }) {
     event.preventDefault()
     setLocalError('')
 
+    const formData = new FormData(event.currentTarget)
+    const hydratedForm = {
+      full_name: String(formData.get('full_name') ?? form.full_name ?? ''),
+      email: String(formData.get('email') ?? form.email ?? ''),
+      password: String(formData.get('password') ?? form.password ?? ''),
+      password_confirm: String(formData.get('password_confirm') ?? form.password_confirm ?? ''),
+    }
+
     const missing = []
-    if (!form.full_name.trim()) missing.push('Full name is required.')
-    if (!form.email.trim()) missing.push('Email is required.')
-    if (!form.password) missing.push('Password is required.')
+    if (!hydratedForm.full_name.trim()) missing.push('Full name is required.')
+    if (!hydratedForm.email.trim()) missing.push('Email is required.')
+    if (!hydratedForm.password) missing.push('Password is required.')
     if (missing.length) {
       setLocalError(missing.join('\n'))
       return
     }
 
-    if (form.password.length < 8) {
+    if (hydratedForm.password.length < 8) {
       setLocalError('Password must be at least 8 characters.')
       return
     }
 
-    if (form.password_confirm && form.password !== form.password_confirm) {
+    if (hydratedForm.password_confirm && hydratedForm.password !== hydratedForm.password_confirm) {
       setLocalError('Passwords do not match.')
       return
     }
     
-    const normalizedEmail = form.email.trim().toLowerCase()
+    const normalizedEmail = hydratedForm.email.trim().toLowerCase()
     const payload = {
-      full_name: form.full_name.trim(),
+      full_name: hydratedForm.full_name.trim(),
       email: normalizedEmail,
-      password: form.password,
-      password_confirm: form.password_confirm,
+      password: hydratedForm.password,
+      password_confirm: hydratedForm.password_confirm,
     }
 
+    setForm(hydratedForm)
     const result = await register(payload)
     if (result.ok) navigate(routes.dashboard)
   }
@@ -142,10 +151,10 @@ export function RegisterPage({ navigate }) {
   return (
     <form className="card form" onSubmit={submit}>
       <h2>Register</h2>
-      <FormInput label="Full Name" required value={form.full_name} onChange={(e) => onChange('full_name', e.target.value)} />
-      <FormInput label="Email" type="email" required value={form.email} onChange={(e) => onChange('email', e.target.value)} />
-      <FormInput label="Password" type="password" required minLength={8} value={form.password} onChange={(e) => onChange('password', e.target.value)} />
-      <FormInput label="Confirm Password" type="password" value={form.password_confirm} onChange={(e) => onChange('password_confirm', e.target.value)} />
+      <FormInput label="Full Name" name="full_name" autoComplete="name" required value={form.full_name} onChange={(e) => onChange('full_name', e.target.value)} />
+      <FormInput label="Email" name="email" type="email" autoComplete="email" required value={form.email} onChange={(e) => onChange('email', e.target.value)} />
+      <FormInput label="Password" name="password" type="password" autoComplete="new-password" required minLength={8} value={form.password} onChange={(e) => onChange('password', e.target.value)} />
+      <FormInput label="Confirm Password" name="password_confirm" type="password" autoComplete="new-password" value={form.password_confirm} onChange={(e) => onChange('password_confirm', e.target.value)} />
       <AlertMessage type="error" message={localError || authError} />
       <button className="primary-btn" type="submit" disabled={loading}>
         Create Account
