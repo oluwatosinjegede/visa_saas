@@ -77,11 +77,12 @@ export const api = {
   apiBaseUrl: API_BASE_URL,
   login: (credentials = {}) => {
     const normalizedEmail = (credentials.email || credentials.username || '').trim().toLowerCase()
+    const password = credentials.password || ''
     return request('/auth/login/', {
       method: 'POST',
       body: JSON.stringify({
-        ...credentials,
         email: normalizedEmail,
+        password,
       }),
     })
   },

@@ -5,6 +5,10 @@ from rest_framework.test import APITestCase
 
 
 class AccountsAuthTests(APITestCase):
+    @staticmethod
+    def error_fields(response):
+        return response.data.get("errors", {})
+
     def test_register_login_and_profile(self):
         register_response = self.client.post(
             reverse("accounts-register"),
@@ -46,7 +50,7 @@ class AccountsAuthTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("email", response.data)
+        self.assertIn("email", self.error_fields(response))
 
     def test_register_requires_password(self):
         response = self.client.post(
@@ -55,7 +59,7 @@ class AccountsAuthTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("password", response.data)
+        self.assertIn("password", self.error_fields(response))
 
     def test_register_rejects_duplicate_email(self):
         payload = {
@@ -72,4 +76,40 @@ class AccountsAuthTests(APITestCase):
 
         self.assertEqual(first.status_code, status.HTTP_201_CREATED)
         self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("email", second.data)
+       self.assertIn("email", self.error_fields(second))
+
+    def test_register_succeeds_without_username(self):
+        response = self.client.post(
+            reverse("accounts-register"),
+            {
+                "full_name": "No Username Needed",
+                "email": "nousername@example.com",
+                "password": "StrongPass123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created_user = get_user_model().objects.get(email="nousername@example.com")
+        self.assertEqual(created_user.username, "nousername@example.com")
+
+    def test_login_does_not_require_username_field(self):
+        user_model = get_user_model()
+        user_model.objects.create_user(
+            username="existing@example.com",
+            email="existing@example.com",
+            password="StrongPass123",
+        )
+
+        response = self.client.post(
+            reverse("accounts-login"),
+            {
+                "email": "existing@example.com",
+                "password": "StrongPass123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn("username", self.error_fields(response))
+        self.assertIn("access", response.data)

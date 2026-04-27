@@ -130,9 +130,7 @@ export function RegisterPage({ navigate }) {
     const normalizedEmail = form.email.trim().toLowerCase()
     const payload = {
       full_name: form.full_name.trim(),
-      name: form.full_name.trim(),
       email: normalizedEmail,
-      username: normalizedEmail,
       password: form.password,
       password_confirm: form.password_confirm,
     }

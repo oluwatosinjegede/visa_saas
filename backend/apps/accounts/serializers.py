@@ -28,7 +28,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class RegisterSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=255, required=True)
-    username = serializers.CharField(required=False, allow_blank=True)
     email = serializers.EmailField(required=True)
     password = serializers.CharField(min_length=8, write_only=True)
     password_confirm = serializers.CharField(required=False, allow_blank=True, write_only=True)
@@ -47,7 +46,6 @@ class RegisterSerializer(serializers.Serializer):
     def validate(self, attrs):
         full_name = attrs.get("full_name", "").strip()
         email = attrs.get("email", "").lower().strip()
-        username = attrs.get("username", "").strip()
         password = attrs.get("password")
         password_confirm = attrs.get("password_confirm")
 
@@ -61,7 +59,6 @@ class RegisterSerializer(serializers.Serializer):
         validate_password(password, user=temp_user)
 
         attrs["email"] = email
-        attrs["username"] = username
         attrs["full_name"] = full_name
 
         return attrs
@@ -69,13 +66,12 @@ class RegisterSerializer(serializers.Serializer):
     def create(self, validated_data):
         full_name = validated_data["full_name"]
         email = validated_data["email"]
-        username = validated_data.get("username") or validated_data["email"]
         password = validated_data["password"]
 
         names = full_name.split(" ", 1)
 
         user = User.objects.create_user(
-            username=username,
+            username=email,
             email=email,
             password=password,
             first_name=names[0],
@@ -94,6 +90,11 @@ class RegisterSerializer(serializers.Serializer):
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.pop(self.username_field, None)
+
 
     @classmethod
     def get_token(cls, user):
