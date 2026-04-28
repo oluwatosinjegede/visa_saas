@@ -111,6 +111,7 @@ class VisaAssessmentView(APIView):
         serializer.is_valid(raise_exception=True)
 
         questionnaire = serializer.validated_data
+        questionnaire_payload = serializer.data
         
         try:
             assessment_result = assess_questionnaire(questionnaire)
@@ -122,7 +123,7 @@ class VisaAssessmentView(APIView):
 
         submission = VisaAssessmentSubmission.objects.create(
             user=request.user,
-            questionnaire=questionnaire,
+            questionnaire=questionnaire_payload,
             score=assessment_result["score"],
             approval_probability=assessment_result["approval_probability"],
             refusal_risk_level=assessment_result["refusal_risk_level"],
