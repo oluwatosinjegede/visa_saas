@@ -378,33 +378,383 @@ function GenericFormPage({ title, description, fields, onSubmitLabel = 'Submit',
   )
 }
 
+const visaYesNoOptions = [
+  { value: 'true', label: 'Yes' },
+  { value: 'false', label: 'No' },
+]
+
+const visaAssessmentInitialForm = {
+  full_name: '',
+  date_of_birth: '',
+  age: '',
+  gender: '',
+  nationality: '',
+  country_of_residence: '',
+  marital_status: '',
+  dependents_count: '0',
+  dependents_reside_with_applicant: 'false',
+  valid_passport: 'true',
+  passport_expiry_date: '',
+  traveled_outside_home_country: 'false',
+  countries_visited_last_10_years: '',
+  visited_us: 'false',
+  visited_uk: 'false',
+  visited_canada: 'false',
+  visited_schengen: 'false',
+  has_overstay_history: 'false',
+  has_deportation_history: 'false',
+  has_previous_visa_refusal: 'false',
+  previous_refusal_country: '',
+  previous_refusal_date: '',
+  previous_refusal_reason: '',
+  visa_type: 'study',
+  destination_country: '',
+  intended_duration_days: '',
+  country_choice_reason: '',
+  why_now: '',
+  purpose_explanation: '',
+  highest_education: '',
+  field_of_study: '',
+  graduation_year: '',
+  previous_education_summary: '',
+  employment_status: 'employed',
+  job_title: '',
+  employer_name: '',
+  employment_length_months: '',
+  annual_income: '',
+  trip_aligned_with_career: 'true',
+  career_progression_plan: '',
+  trip_funding_source: 'self',
+  sponsor_name: '',
+  sponsor_relationship: '',
+  sponsor_occupation: '',
+  current_bank_balance: '',
+  average_monthly_inflow: '',
+  bank_statement_duration_months: '6',
+  has_large_recent_deposits: 'false',
+  large_deposit_explanation: '',
+  assets_property: 'false',
+  assets_investments: 'false',
+  assets_business_ownership: 'false',
+  has_tax_records: 'false',
+  owns_property_home_country: 'false',
+  has_permanent_job_or_business: 'false',
+  job_or_business_duration_months: '',
+  has_approved_leave: 'false',
+  spouse_in_home_country: 'false',
+  children_in_school_home_country: 'false',
+  community_commitments: '',
+  return_plan: '',
+  has_employment_letter: 'false',
+  has_payslips: 'false',
+  has_admission_letter: 'false',
+  has_invitation_letter: 'false',
+  documents_verifiable: 'true',
+  document_inconsistencies: 'false',
+  used_false_documents: 'false',
+  misrepresented_information: 'false',
+  related_to_immigration_violator: 'false',
+  understands_visa_conditions: 'true',
+  statement_of_intent: '',
+}
+
+const visaAssessmentSections = [
+  {
+    title: 'Section 1: Personal Profile',
+    description: 'Identity and demographic details from your passport and personal records.',
+    fields: [
+      { name: 'full_name', label: 'Full name (as on passport)' },
+      { name: 'date_of_birth', label: 'Date of birth', type: 'date' },
+      { name: 'age', label: 'Age', type: 'number' },
+      { name: 'gender', label: 'Gender', required: false },
+      { name: 'nationality', label: 'Nationality' },
+      { name: 'country_of_residence', label: 'Country of residence' },
+      { name: 'marital_status', label: 'Marital status', required: false },
+      { name: 'dependents_count', label: 'Number of dependents', type: 'number' },
+      { name: 'dependents_reside_with_applicant', label: 'Dependents reside with you', type: 'select', options: visaYesNoOptions },
+      { name: 'valid_passport', label: 'Valid passport', type: 'select', options: visaYesNoOptions },
+      { name: 'passport_expiry_date', label: 'Passport expiry date', type: 'date', required: false },
+    ],
+  },
+  {
+    title: 'Section 2: Travel & Immigration History',
+    fields: [
+      { name: 'traveled_outside_home_country', label: 'Traveled outside your home country', type: 'select', options: visaYesNoOptions },
+      { name: 'countries_visited_last_10_years', label: 'Countries visited (last 10 years, comma-separated)', type: 'textarea', required: false },
+      { name: 'visited_us', label: 'Visited United States', type: 'select', options: visaYesNoOptions },
+      { name: 'visited_uk', label: 'Visited United Kingdom', type: 'select', options: visaYesNoOptions },
+      { name: 'visited_canada', label: 'Visited Canada', type: 'select', options: visaYesNoOptions },
+      { name: 'visited_schengen', label: 'Visited Schengen Area', type: 'select', options: visaYesNoOptions },
+      { name: 'has_overstay_history', label: 'Any visa overstay history', type: 'select', options: visaYesNoOptions },
+      { name: 'has_deportation_history', label: 'Any deportation/removal history', type: 'select', options: visaYesNoOptions },
+      { name: 'has_previous_visa_refusal', label: 'Any previous visa refusal', type: 'select', options: visaYesNoOptions },
+      { name: 'previous_refusal_country', label: 'Previous refusal country', required: false },
+      { name: 'previous_refusal_date', label: 'Previous refusal date', type: 'date', required: false },
+      { name: 'previous_refusal_reason', label: 'Previous refusal reason', type: 'textarea', required: false },
+    ],
+  },
+  {
+    title: 'Section 3: Purpose of Travel',
+    fields: [
+      { name: 'visa_type', label: 'Visa type', type: 'select', options: [
+        { value: 'study', label: 'Study' },
+        { value: 'visit', label: 'Visit' },
+        { value: 'work', label: 'Work' },
+        { value: 'business', label: 'Business' },
+        { value: 'pr', label: 'Permanent Residence' },
+      ] },
+      { name: 'destination_country', label: 'Destination country' },
+      { name: 'intended_duration_days', label: 'Intended duration (days)', type: 'number' },
+      { name: 'country_choice_reason', label: 'Why this country?', type: 'textarea' },
+      { name: 'why_now', label: 'Why now?', type: 'textarea' },
+      { name: 'purpose_explanation', label: 'Detailed purpose of travel', type: 'textarea' },
+    ],
+  },
+  {
+    title: 'Section 4: Education & Career Consistency',
+    fields: [
+      { name: 'highest_education', label: 'Highest educational qualification' },
+      { name: 'field_of_study', label: 'Field of study' },
+      { name: 'graduation_year', label: 'Year of graduation', type: 'number' },
+      { name: 'previous_education_summary', label: 'Previous education summary (chronological)', type: 'textarea', required: false },
+      { name: 'employment_status', label: 'Employment status', type: 'select', options: [
+        { value: 'employed', label: 'Employed' },
+        { value: 'self-employed', label: 'Self-employed' },
+        { value: 'unemployed', label: 'Unemployed' },
+      ] },
+      { name: 'job_title', label: 'Job title', required: false },
+      { name: 'employer_name', label: 'Employer / Business name', required: false },
+      { name: 'employment_length_months', label: 'Length of employment (months)', type: 'number' },
+      { name: 'annual_income', label: 'Annual income', type: 'number' },
+      { name: 'trip_aligned_with_career', label: 'Travel aligns with career', type: 'select', options: visaYesNoOptions },
+      { name: 'career_progression_plan', label: 'Career progression and future plan', type: 'textarea' },
+    ],
+  },
+  {
+    title: 'Section 5: Financial Capacity',
+    fields: [
+      { name: 'trip_funding_source', label: 'Trip funding source', type: 'select', options: [
+        { value: 'self', label: 'Self' },
+        { value: 'sponsor', label: 'Sponsor' },
+      ] },
+      { name: 'sponsor_name', label: 'Sponsor name', required: false },
+      { name: 'sponsor_relationship', label: 'Sponsor relationship', required: false },
+      { name: 'sponsor_occupation', label: 'Sponsor occupation', required: false },
+      { name: 'current_bank_balance', label: 'Current bank balance', type: 'number' },
+      { name: 'average_monthly_inflow', label: 'Average monthly inflow (6 months)', type: 'number' },
+      { name: 'bank_statement_duration_months', label: 'Bank statement duration (months)', type: 'select', options: [
+        { value: '6', label: '6' },
+        { value: '9', label: '9' },
+        { value: '12', label: '12' },
+      ] },
+      { name: 'has_large_recent_deposits', label: 'Large recent deposits', type: 'select', options: visaYesNoOptions },
+      { name: 'large_deposit_explanation', label: 'Large deposit source explanation', type: 'textarea', required: false },
+      { name: 'assets_property', label: 'Owns property asset', type: 'select', options: visaYesNoOptions },
+      { name: 'assets_investments', label: 'Has investments', type: 'select', options: visaYesNoOptions },
+      { name: 'assets_business_ownership', label: 'Owns business', type: 'select', options: visaYesNoOptions },
+      { name: 'has_tax_records', label: 'Has tax records', type: 'select', options: visaYesNoOptions },
+    ],
+  },
+  {
+    title: 'Section 6: Home Country Ties',
+    fields: [
+      { name: 'owns_property_home_country', label: 'Owns property in home country', type: 'select', options: visaYesNoOptions },
+      { name: 'has_permanent_job_or_business', label: 'Has permanent job/business', type: 'select', options: visaYesNoOptions },
+      { name: 'job_or_business_duration_months', label: 'Current job/business duration (months)', type: 'number' },
+      { name: 'has_approved_leave', label: 'Approved leave available', type: 'select', options: visaYesNoOptions },
+      { name: 'spouse_in_home_country', label: 'Spouse in home country', type: 'select', options: visaYesNoOptions },
+      { name: 'children_in_school_home_country', label: 'Children in school (home country)', type: 'select', options: visaYesNoOptions },
+      { name: 'community_commitments', label: 'Community/professional commitments', type: 'textarea', required: false },
+      { name: 'return_plan', label: 'What will you return to after your trip?', type: 'textarea' },
+    ],
+  },
+  {
+    title: 'Section 7: Documentation Readiness',
+    fields: [
+      { name: 'has_employment_letter', label: 'Employment letter available', type: 'select', options: visaYesNoOptions },
+      { name: 'has_payslips', label: 'Pay slips available', type: 'select', options: visaYesNoOptions },
+      { name: 'has_admission_letter', label: 'Admission letter available (if study)', type: 'select', options: visaYesNoOptions },
+      { name: 'has_invitation_letter', label: 'Invitation letter available (if visit)', type: 'select', options: visaYesNoOptions },
+      { name: 'documents_verifiable', label: 'All documents are verifiable', type: 'select', options: visaYesNoOptions },
+      { name: 'document_inconsistencies', label: 'Any document inconsistencies', type: 'select', options: visaYesNoOptions },
+    ],
+  },
+  {
+    title: 'Section 8: Credibility & Risk Flags',
+    fields: [
+      { name: 'used_false_documents', label: 'Ever used false documents', type: 'select', options: visaYesNoOptions },
+      { name: 'misrepresented_information', label: 'Ever misrepresented information', type: 'select', options: visaYesNoOptions },
+      { name: 'related_to_immigration_violator', label: 'Related to someone with immigration violations', type: 'select', options: visaYesNoOptions },
+      { name: 'understands_visa_conditions', label: 'Understands visa conditions and obligations', type: 'select', options: visaYesNoOptions },
+    ],
+  },
+  {
+    title: 'Section 9: Statement of Intent',
+    fields: [
+      { name: 'statement_of_intent', label: 'Why should your visa be approved and what guarantees your return?', type: 'textarea' },
+    ],
+  },
+]
+
+const parseVisaBoolean = (value) => String(value) === 'true'
+
 export function VisaAssessmentPage() {
   const { accessToken } = useAuth()
+  const [form, setForm] = useState(visaAssessmentInitialForm)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [assessmentResult, setAssessmentResult] = useState(null)
 
+  const onChange = (name, value) => {
+    setForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const requiredFields = useMemo(
+    () =>
+      visaAssessmentSections
+        .flatMap((section) => section.fields)
+        .filter((field) => field.required !== false)
+        .map((field) => field.name),
+    [],
+  )
+
+  const submit = async (event) => {
+    event.preventDefault()
+    setError('')
+    setSuccess('')
+
+    const missingFields = requiredFields.filter((fieldName) => !String(form[fieldName] || '').trim())
+    if (missingFields.length) {
+      setError(`Please complete all required questionnaire fields. Missing: ${missingFields.join(', ')}`)
+      return
+    }
+
+    const payload = {
+      ...form,
+      age: Number(form.age),
+      dependents_count: Number(form.dependents_count || 0),
+      intended_duration_days: Number(form.intended_duration_days),
+      graduation_year: Number(form.graduation_year),
+      employment_length_months: Number(form.employment_length_months || 0),
+      annual_income: String(form.annual_income || '0'),
+      current_bank_balance: String(form.current_bank_balance || '0'),
+      average_monthly_inflow: String(form.average_monthly_inflow || '0'),
+      bank_statement_duration_months: Number(form.bank_statement_duration_months || 6),
+      job_or_business_duration_months: Number(form.job_or_business_duration_months || 0),
+      countries_visited_last_10_years: form.countries_visited_last_10_years
+        .split(',')
+        .map((country) => country.trim())
+        .filter(Boolean),
+    }
+
+    ;[
+      'dependents_reside_with_applicant', 'valid_passport', 'traveled_outside_home_country', 'visited_us',
+      'visited_uk', 'visited_canada', 'visited_schengen', 'has_overstay_history', 'has_deportation_history',
+      'has_previous_visa_refusal', 'trip_aligned_with_career', 'has_large_recent_deposits', 'assets_property',
+      'assets_investments', 'assets_business_ownership', 'has_tax_records', 'owns_property_home_country',
+      'has_permanent_job_or_business', 'has_approved_leave', 'spouse_in_home_country', 'children_in_school_home_country',
+      'has_employment_letter', 'has_payslips', 'has_admission_letter', 'has_invitation_letter', 'documents_verifiable',
+      'document_inconsistencies', 'used_false_documents', 'misrepresented_information', 'related_to_immigration_violator',
+      'understands_visa_conditions',
+    ].forEach((field) => {
+      payload[field] = parseVisaBoolean(form[field])
+    })
+
+    setLoading(true)
+    try {
+      const response = await api.submitVisaAssessment(accessToken, payload)
+      setAssessmentResult(response?.data || null)
+      setSuccess(response?.message || 'Visa assessment complete.')
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Unable to complete visa assessment.'))
+    } finally {
+      setLoading(false)
+    }
+  }
+  
   return (
-    <GenericFormPage
-      title="Visa Assessment"
-      description="Guided AI scoring form for eligibility and readiness."
-      fields={[
-        { name: 'destination_country', label: 'Destination country' },
-        { name: 'visa_category', label: 'Visa category' },
-        { name: 'age', label: 'Age', type: 'number' },
-        { name: 'education_level', label: 'Education level' },
-        { name: 'work_experience', label: 'Work experience' },
-        { name: 'travel_history', label: 'Travel history', type: 'textarea' },
-        { name: 'financial_proof', label: 'Financial proof' },
-        { name: 'family_ties', label: 'Family ties' },
-        { name: 'purpose_of_travel', label: 'Purpose of travel', type: 'textarea' },
-      ]}
-      onSubmit={(data) =>
-        api.submitVisaAssessment(accessToken, {
-          age: Number(data.age),
-          country: data.destination_country,
-          education_level: data.education_level,
-          work_experience: data.work_experience,
-        })
-      }
-    />
+    <section className="stack">
+      <form className="card form visa-assessment-form" onSubmit={submit}>
+        <h2>Visa Success Probability Assessment</h2>
+        <p>Complete the structured questionnaire to generate automated scoring, refusal risk classification, and AI refusal prediction insights.</p>
+
+        {visaAssessmentSections.map((section) => (
+          <div key={section.title} className="visa-section card">
+            <h3>{section.title}</h3>
+            {section.description ? <p>{section.description}</p> : null}
+            <div className="grid-3">
+              {section.fields.map((field) => (
+                <FormInput
+                  key={field.name}
+                  label={field.label}
+                  name={field.name}
+                  as={field.type === 'textarea' ? 'textarea' : field.type === 'select' ? 'select' : 'input'}
+                  type={field.type === 'textarea' || field.type === 'select' ? undefined : field.type || 'text'}
+                  value={form[field.name]}
+                  onChange={(event) => onChange(field.name, event.target.value)}
+                  required={field.required !== false}
+                >
+                  {field.type === 'select'
+                    ? field.options.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))
+                    : null}
+                </FormInput>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <AlertMessage type="success" message={success} />
+        <AlertMessage type="error" message={error} />
+
+        <button className="primary-btn" type="submit" disabled={loading}>
+          {loading ? 'Running assessment...' : 'Run assessment'}
+        </button>
+      </form>
+
+      {assessmentResult ? (
+        <section className="card stack">
+          <h3>Assessment Outcome</h3>
+          <div className="grid-4">
+            <DashboardCard title="Readiness Score" value={`${assessmentResult.score} / 100`} note="Automated scoring" />
+            <DashboardCard title="Approval Probability" value={assessmentResult.approval_probability} note="Rule-based band" />
+            <DashboardCard title="Refusal Risk" value={assessmentResult.refusal_risk_level} note="Risk classifier" />
+            <DashboardCard title="Assessed On" value={new Date(assessmentResult.created_at).toLocaleDateString()} note="Submission timestamp" />
+          </div>
+
+          <div>
+            <h4>Refusal Risks</h4>
+            <ul className="status-list">
+              {(assessmentResult.refusal_risks || []).map((risk) => (
+                <li key={risk}>{risk}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h4>Recommendations</h4>
+            <ul className="status-list">
+              {(assessmentResult.recommendations || []).map((recommendation) => (
+                <li key={recommendation}>{recommendation}</li>
+              ))}
+            </ul>
+          </div>
+
+          {assessmentResult.ai_refusal_prediction ? (
+            <div className="card">
+              <h4>AI Refusal Prediction</h4>
+              <p>Refusal probability: {assessmentResult.ai_refusal_prediction.refusal_probability}%</p>
+              <p>Risk category: {assessmentResult.ai_refusal_prediction.risk_category}</p>
+              <p>{assessmentResult.ai_refusal_prediction.narrative}</p>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+    </section>
   )
 }
 

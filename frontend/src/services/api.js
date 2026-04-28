@@ -102,7 +102,7 @@ export const api = {
   getProfile: (token) =>
     request('/auth/profile/', { headers: { Authorization: `Bearer ${token}` } }),
   submitVisaAssessment: (token, data) =>
-    request('/scoring/profile/', {
+    request('/scoring/assessment/', {
       method: 'POST',
       body: JSON.stringify(data),
       headers: { Authorization: `Bearer ${token}` },
