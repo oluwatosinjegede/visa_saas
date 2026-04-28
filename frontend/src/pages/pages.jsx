@@ -886,23 +886,60 @@ export function JobRelocationPage() {
   )
 }
 
-const plans = [
-  { name: 'Starter', price: '$19/mo', features: ['Checklist', 'Basic scoring', 'Single applicant'] },
-  { name: 'Pro', price: '$49/mo', features: ['AI scoring', 'SOP + refusal analysis', 'Priority support'] },
-  { name: 'Premium', price: '$99/mo', features: ['Consultant access', 'Advanced analytics', 'Team features'] },
-]
-
 export function PricingPage({ navigate }) {
+  const { accessToken } = useAuth()
+  const [plans, setPlans] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  React.useEffect(() => {
+    let ignore = false
+    if (!accessToken) return undefined
+
+    setLoading(true)
+    setError('')
+
+    api
+      .subscriptionPlans(accessToken)
+      .then((response) => {
+        if (ignore) return
+        const hydrated = (response?.plans || []).map((plan) => ({
+          code: plan.code,
+          name: plan.name,
+          description: plan.description,
+          price: `$${Number(plan.amount).toFixed(2)}/mo`,
+          features: plan.features || [],
+          amount: plan.amount,
+          amount_kobo: plan.amount_kobo,
+        }))
+        setPlans(hydrated)
+      })
+      .catch((err) => {
+        if (!ignore) setError(getApiErrorMessage(err, 'Unable to load pricing plans.'))
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false)
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [accessToken])
+
   return (
     <section className="stack">
       <h2>Pricing</h2>
+      <p>Select a subscription to unlock premium migration services and tools.</p>
+      <AlertMessage type="error" message={error} />
+
+      {loading ? <LoadingSpinner label="Loading plans..." /> : null}
 
       <div className="grid-3">
         {plans.map((plan) => (
           <PlanCard
-            key={plan.name}
+            key={plan.code}
             plan={plan}
-            onSelect={() => navigate(`${routes.payment}?plan=${encodeURIComponent(plan.name)}`)}
+            onSelect={() => navigate(`${routes.payment}?plan=${encodeURIComponent(plan.code)}`)}
           />
         ))}
       </div>
@@ -914,9 +951,33 @@ export function PaymentPage({ navigate }) {
   const { accessToken } = useAuth()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [plans, setPlans] = useState([])
+  const [selectedPlan, setSelectedPlan] = useState('BASIC')
 
   const search = new URLSearchParams(window.location.search)
-  const selectedPlan = search.get('plan') || 'Starter'
+  const requestedPlan = search.get('plan') || 'BASIC'
+
+  React.useEffect(() => {
+    let ignore = false
+    if (!accessToken) return undefined
+
+    api
+      .subscriptionPlans(accessToken)
+      .then((response) => {
+        if (ignore) return
+        const availablePlans = response?.plans || []
+        setPlans(availablePlans)
+        const requestedExists = availablePlans.some((plan) => plan.code === requestedPlan)
+        setSelectedPlan(requestedExists ? requestedPlan : availablePlans[0]?.code || 'BASIC')
+      })
+      .catch((err) => {
+        if (!ignore) setError(getApiErrorMessage(err, 'Unable to load payment plans.'))
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [accessToken, requestedPlan])
 
   const startPayment = async () => {
     setLoading(true)
@@ -929,11 +990,11 @@ export function PaymentPage({ navigate }) {
       })
 
       if (result?.authorization_url) {
-        window.location.href = result.authorization_url
+        window.location.href = `${result.authorization_url}?reference=${encodeURIComponent(result.reference)}&plan=${encodeURIComponent(selectedPlan)}`
         return
       }
 
-      navigate(routes.paymentSuccess)
+      navigate(`${routes.paymentSuccess}?reference=${encodeURIComponent(result.reference)}&plan=${encodeURIComponent(selectedPlan)}`)
     } catch (err) {
       setError(getApiErrorMessage(err, 'Payment initialization failed'))
       navigate(routes.paymentFailed)
@@ -945,7 +1006,19 @@ export function PaymentPage({ navigate }) {
   return (
     <section className="card">
       <h2>Checkout</h2>
-      <p>Selected plan: {selectedPlan}</p>
+      <p>Select your preferred subscription plan before you continue to Paystack checkout.</p>
+
+      <label className="form-input">
+        <span>Subscription plan</span>
+        <select value={selectedPlan} onChange={(e) => setSelectedPlan(e.target.value)}>
+          {plans.map((plan) => (
+            <option key={plan.code} value={plan.code}>
+              {plan.name} (${Number(plan.amount).toFixed(2)}/mo)
+            </option>
+          ))}
+        </select>
+      </label>
+
       <p>Paystack is configured as the primary payment provider.</p>
 
       <button className="primary-btn" type="button" onClick={startPayment} disabled={loading}>
@@ -958,10 +1031,45 @@ export function PaymentPage({ navigate }) {
 }
 
 export function PaymentSuccessPage() {
+  const { accessToken } = useAuth()
+  const [success, setSuccess] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  React.useEffect(() => {
+    let ignore = false
+    const search = new URLSearchParams(window.location.search)
+    const reference = search.get('reference')
+
+    if (!accessToken || !reference) {
+      setLoading(false)
+      setError('Missing payment reference. Please retry payment from checkout.')
+      return undefined
+    }
+
+    api
+      .verifyPayment(accessToken, reference)
+      .then((result) => {
+        if (!ignore) setSuccess(result?.message || 'Payment verified successfully.')
+      })
+      .catch((err) => {
+        if (!ignore) setError(getApiErrorMessage(err, 'Payment verification failed.'))
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false)
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [accessToken])
+
   return (
     <section className="card">
       <h2>Payment Successful</h2>
-      <p>Your subscription is now active.</p>
+      {loading ? <LoadingSpinner label="Verifying payment..." /> : null}
+      <AlertMessage type="success" message={success || 'Your subscription is now active.'} />
+      <AlertMessage type="error" message={error} />
     </section>
   )
 }

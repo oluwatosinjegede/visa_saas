@@ -303,6 +303,10 @@ export const api = {
       body: JSON.stringify(data),
       requiresAuth: true,
     }),
+  subscriptionPlans: () =>
+    request('/payments/plans/', {
+      requiresAuth: true,
+    }),
   initializePayment: (_token, data) =>
     request('/payments/initialize/', {
       method: 'POST',

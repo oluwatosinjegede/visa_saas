@@ -20,6 +20,8 @@ class Subscription(models.Model):
 
 class Payment(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    plan = models.CharField(max_length=40, choices=SubscriptionPlan.choices, default=SubscriptionPlan.FREE)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     provider = models.CharField(max_length=30)
+    reference = models.CharField(max_length=120, unique=True)
     status = models.CharField(max_length=30, default="pending")

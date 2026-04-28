@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Payment, Subscription, SubscriptionPlan
-from .serializers import InitializePaymentSerializer, VerifyPaymentSerializer
+from .serializers import InitializePaymentSerializer, SubscriptionPlanSerializer, VerifyPaymentSerializer
 
 
 class HealthView(APIView):
@@ -12,14 +12,47 @@ class HealthView(APIView):
         return Response({"module": "payments", "status": "ok"})
 
 
+class SubscriptionPlansView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    PLAN_CATALOG = {
+        SubscriptionPlan.BASIC: {
+            "amount_kobo": 1900,
+            "description": "Ideal for individual applicants getting started.",
+            "features": ["Checklist", "Basic scoring", "Single applicant"],
+        },
+        SubscriptionPlan.PREMIUM: {
+            "amount_kobo": 4900,
+            "description": "Best for serious applicants that need AI automation.",
+            "features": ["AI scoring", "SOP + refusal analysis", "Priority support"],
+        },
+        SubscriptionPlan.CONSULTANT_PRO: {
+            "amount_kobo": 9900,
+            "description": "Built for teams, consultants, and advanced support.",
+            "features": ["Consultant access", "Advanced analytics", "Team features"],
+        },
+    }
+
+    def get(self, request):
+        plans = [
+            {
+                "code": code,
+                "name": SubscriptionPlan(code).label,
+                "amount": detail["amount_kobo"] / 100,
+                "amount_kobo": detail["amount_kobo"],
+                "description": detail["description"],
+                "features": detail["features"],
+            }
+            for code, detail in self.PLAN_CATALOG.items()
+        ]
+        serializer = SubscriptionPlanSerializer(plans, many=True)
+        return Response({"plans": serializer.data}, status=status.HTTP_200_OK)
+
+
 class InitializePaymentView(APIView):
     permission_classes = [IsAuthenticated]
 
-    PLAN_TO_AMOUNT = {
-        "Starter": 1900,
-        "Pro": 4900,
-        "Premium": 9900,
-    }
+    PLAN_TO_AMOUNT = SubscriptionPlansView.PLAN_CATALOG
 
     def post(self, request):
         serializer = InitializePaymentSerializer(data=request.data)
@@ -37,8 +70,8 @@ class InitializePaymentView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        amount = self.PLAN_TO_AMOUNT.get(plan)
-        if amount is None:
+        plan_pricing = self.PLAN_TO_AMOUNT.get(plan)
+        if plan_pricing is None:
             return Response(
                 {
                     "message": "Payment initialization failed",
@@ -47,14 +80,26 @@ class InitializePaymentView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        reference = f"VP-{request.user.id}-{plan.upper()}"
-        Payment.objects.create(user=request.user, amount=amount / 100, provider=provider, status="pending")
+        existing_payment = Payment.objects.filter(user=request.user, plan=plan, status="pending").order_by("-id").first()
+        if existing_payment:
+            reference = existing_payment.reference
+        else:
+            reference = f"VP-{request.user.id}-{plan}-{Payment.objects.count() + 1}"
+            Payment.objects.create(
+                user=request.user,
+                plan=plan,
+                amount=plan_pricing["amount_kobo"] / 100,
+                provider=provider,
+                reference=reference,
+                status="pending",
+            )
 
         return Response(
             {
                 "message": "Payment initialized successfully",
                 "authorization_url": f"https://paystack.com/pay/{reference}",
                 "reference": reference,
+                "plan": plan,
             },
             status=status.HTTP_200_OK,
         )
@@ -66,14 +111,30 @@ class VerifyPaymentView(APIView):
     def get(self, request):
         serializer = VerifyPaymentSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
+        reference = serializer.validated_data["reference"]
+
+        payment = Payment.objects.filter(user=request.user, reference=reference).first()
+        if not payment:
+            return Response(
+                {
+                    "message": "Payment verification failed",
+                    "errors": {"reference": ["Payment reference was not found."]},
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        payment.status = "success"
+        payment.save(update_fields=["status"])
 
         Subscription.objects.update_or_create(
             user=request.user,
-            defaults={"plan": SubscriptionPlan.BASIC, "active": True},
+            defaults={"plan": payment.plan, "active": True},
         )
 
-        return Response({"message": "Payment verified", "status": "success"}, status=status.HTTP_200_OK)
-
+        return Response(
+            {"message": "Payment verified", "status": "success", "plan": SubscriptionPlan(payment.plan).label},
+            status=status.HTTP_200_OK,
+        )
 
 class CurrentSubscriptionView(APIView):
     permission_classes = [IsAuthenticated]
