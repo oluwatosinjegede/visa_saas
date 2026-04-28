@@ -5,7 +5,6 @@ from rest_framework.views import APIView
 
 from .models import ApplicantProfile, SOPSubmission, VisaAssessmentSubmission
 from .permissions import IsPaidUser
-from .models import ApplicantProfile, SOPSubmission
 from .serializers import (
     ApplicantProfileSerializer,
     SOPResultSerializer,
@@ -105,7 +104,7 @@ class UserResultsView(APIView):
 
 
 class VisaAssessmentView(APIView):
-    permission_classes = [IsAuthenticated, IsPaidUser]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         serializer = VisaAssessmentQuestionnaireSerializer(data=request.data)
