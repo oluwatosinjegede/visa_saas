@@ -111,7 +111,14 @@ class VisaAssessmentView(APIView):
         serializer.is_valid(raise_exception=True)
 
         questionnaire = serializer.validated_data
-        assessment_result = assess_questionnaire(questionnaire)
+        
+        try:
+            assessment_result = assess_questionnaire(questionnaire)
+        except Exception:
+            return Response(
+                {"message": "Visa assessment failed", "errors": {"assessment": ["Unable to complete assessment at this time."]}},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         submission = VisaAssessmentSubmission.objects.create(
             user=request.user,

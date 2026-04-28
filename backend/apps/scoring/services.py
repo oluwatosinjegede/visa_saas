@@ -71,7 +71,8 @@ def predict_refusal_with_ai(questionnaire: dict[str, Any], refusal_risks: list[s
     if client is None:
         return _build_heuristic_prediction(score, refusal_risks)
 
-    response = client.chat.completions.create(
+    try:
+        response = client.chat.completions.create(
         model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         temperature=0.2,
         response_format={"type": "json_object"},
@@ -93,9 +94,8 @@ def predict_refusal_with_ai(questionnaire: dict[str, Any], refusal_risks: list[s
         ],
     )
 
-    content = response.choices[0].message.content or "{}"
+        content = response.choices[0].message.content or "{}"
 
-    try:
         data = json.loads(content)
         refusal_probability = max(0.0, min(100.0, float(data.get("refusal_probability", 50))))
         key_drivers = data.get("key_drivers") if isinstance(data.get("key_drivers"), list) else refusal_risks[:5]
@@ -105,7 +105,7 @@ def predict_refusal_with_ai(questionnaire: dict[str, Any], refusal_risks: list[s
             "key_drivers": key_drivers,
             "narrative": data.get("narrative") or "AI-generated refusal prediction.",
         }
-    except (ValueError, TypeError, json.JSONDecodeError):
+    except Exception:
         return _build_heuristic_prediction(score, refusal_risks)
 
 

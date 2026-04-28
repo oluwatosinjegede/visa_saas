@@ -132,10 +132,20 @@ function isJwtAuthError(payload) {
   )
 }
 
+
+function sanitizeServerMessage(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  if (raw.startsWith('<!doctype html') || raw.startsWith('<html')) {
+    return 'Server error (500). Please try again shortly.'
+  }
+  return raw
+}
+
 function buildMessage(status, payload, fieldErrors) {
   if (isJwtAuthError(payload)) return AUTH_ERROR_MESSAGE
-  if (payload?.message) return payload.message
-  if (payload?.detail) return String(payload.detail)
+  if (payload?.message) return sanitizeServerMessage(payload.message)
+  if (payload?.detail) return sanitizeServerMessage(payload.detail)
 
   const firstField = Object.keys(fieldErrors)[0]
   if (firstField && fieldErrors[firstField]?.length) {
