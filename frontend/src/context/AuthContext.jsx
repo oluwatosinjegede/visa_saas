@@ -1,5 +1,14 @@
-import React, { createContext, useContext, useMemo, useState } from 'react'
-import { api, getApiErrorMessage } from '../services/api'
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { routes } from '../constants/routes'
+import {
+  api,
+  clearAuthTokens,
+  getApiErrorMessage,
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  saveAuthTokens,
+  setAuthFailureHandler,
+} from '../services/api'
 
 const ACCESS_TOKEN_KEY = 'visapilot_access_token'
 const REFRESH_TOKEN_KEY = 'visapilot_refresh_token'
@@ -17,9 +26,18 @@ function readJson(key) {
   }
 }
 
+function normalizeToken(token) {
+  if (typeof token !== 'string') return ''
+  const value = token.trim()
+  if (!value) return ''
+  const lowered = value.toLowerCase()
+  if (lowered === 'undefined' || lowered === 'null') return ''
+  return value
+}
+
 export function AuthProvider({ children }) {
-  const [accessToken, setAccessToken] = useState(() => localStorage.getItem(ACCESS_TOKEN_KEY) || '')
-  const [refreshToken, setRefreshToken] = useState(() => localStorage.getItem(REFRESH_TOKEN_KEY) || '')
+  const [accessToken, setAccessToken] = useState(() => getStoredAccessToken())
+  const [refreshToken, setRefreshToken] = useState(() => getStoredRefreshToken())
   const [profile, setProfile] = useState(() => readJson(PROFILE_KEY))
   const [loading, setLoading] = useState(false)
   const [authError, setAuthError] = useState('')
@@ -27,22 +45,42 @@ export function AuthProvider({ children }) {
   const isAuthenticated = Boolean(accessToken)
 
   const persist = ({ access, refresh, user }) => {
-    setAccessToken(access)
-    setRefreshToken(refresh)
+    const normalizedAccess = normalizeToken(access)
+    const normalizedRefresh = normalizeToken(refresh)
+
+    setAccessToken(normalizedAccess)
+    setRefreshToken(normalizedRefresh)
     setProfile(user)
-    localStorage.setItem(ACCESS_TOKEN_KEY, access)
-    localStorage.setItem(REFRESH_TOKEN_KEY, refresh)
+
+    saveAuthTokens({ access: normalizedAccess, refresh: normalizedRefresh })
+    localStorage.setItem(ACCESS_TOKEN_KEY, normalizedAccess)
+    localStorage.setItem(REFRESH_TOKEN_KEY, normalizedRefresh)
     localStorage.setItem(PROFILE_KEY, JSON.stringify(user || {}))
   }
 
-  const clear = () => {
+  const clear = (shouldRedirect = false) => {
     setAccessToken('')
     setRefreshToken('')
     setProfile(null)
+    clearAuthTokens()
     localStorage.removeItem(ACCESS_TOKEN_KEY)
     localStorage.removeItem(REFRESH_TOKEN_KEY)
     localStorage.removeItem(PROFILE_KEY)
+
+    if (shouldRedirect && window.location.pathname !== routes.login) {
+      window.history.pushState({}, '', routes.login)
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    }
   }
+
+  useEffect(() => {
+    setAuthFailureHandler(() => {
+      setAuthError('Your session has expired. Please log in again.')
+      clear(true)
+    })
+
+    return () => setAuthFailureHandler(null)
+  }, [])
 
   const login = async (credentials) => {
     setLoading(true)
@@ -84,7 +122,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const logout = () => clear()
+  const logout = () => clear(true)
 
   const value = useMemo(
     () => ({
