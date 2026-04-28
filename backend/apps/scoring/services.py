@@ -28,22 +28,15 @@ def _truthy(value: Any) -> bool:
     return bool(value)
 
 
-def _approval_band(score: float) -> str:
-    if score >= 80:
+def _approval_band_from_refusal_probability(refusal_probability: float) -> str:
+    success_probability = 100 - refusal_probability
+    if success_probability >= 80:
         return "High"
-    if score >= 65:
+    if success_probability >= 65:
         return "Moderate"
-    if score >= 50:
+    if success_probability >= 50:
         return "Low"
     return "Very Low"
-
-
-def _risk_band(score: float, critical_flags: int, total_flags: int) -> str:
-    if critical_flags >= 2 or score < 45:
-        return "High"
-    if critical_flags >= 1 or total_flags >= 5 or score < 60:
-        return "Medium"
-    return "Low"
 
 
 def _build_heuristic_prediction(score: float, refusal_risks: list[str]) -> dict[str, Any]:
@@ -217,9 +210,10 @@ def assess_questionnaire(questionnaire: dict[str, Any]) -> dict[str, Any]:
         recommendations.append("Expand your statement of intent with return strategy and long-term plan.")
 
     score = max(0.0, min(100.0, round(score, 2)))
-    approval_probability = _approval_band(score)
-    refusal_risk_level = _risk_band(score, critical_flags=critical_flags, total_flags=len(refusal_risks))
     ai_refusal_prediction = predict_refusal_with_ai(questionnaire, refusal_risks, score)
+    refusal_probability = float(ai_refusal_prediction.get("refusal_probability", 50))
+    refusal_risk_level = ai_refusal_prediction.get("risk_category", "Medium")
+    approval_probability = _approval_band_from_refusal_probability(refusal_probability)
 
     return {
         "score": score,

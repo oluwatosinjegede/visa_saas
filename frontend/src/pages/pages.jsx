@@ -677,7 +677,7 @@ export function VisaAssessmentPage() {
     <section className="stack">
       <form className="card form visa-assessment-form" onSubmit={submit}>
         <h2>Visa Success Probability Assessment</h2>
-        <p>Complete the structured questionnaire to generate automated scoring, refusal risk classification, and AI refusal prediction insights.</p>
+         <p>Complete the structured questionnaire to generate automated scoring and AI refusal prediction-driven risk insights.</p>
 
         {visaAssessmentSections.map((section) => (
           <div key={section.title} className="visa-section card">
@@ -721,8 +721,8 @@ export function VisaAssessmentPage() {
           <h3>Assessment Outcome</h3>
           <div className="grid-4">
             <DashboardCard title="Readiness Score" value={`${assessmentResult.score} / 100`} note="Automated scoring" />
-            <DashboardCard title="Approval Probability" value={assessmentResult.approval_probability} note="Rule-based band" />
-            <DashboardCard title="Refusal Risk" value={assessmentResult.refusal_risk_level} note="Risk classifier" />
+             <DashboardCard title="Approval Probability" value={assessmentResult.approval_probability} note="Derived from AI refusal probability" />
+            <DashboardCard title="Refusal Risk" value={assessmentResult.refusal_risk_level} note="AI risk category" />
             <DashboardCard title="Assessed On" value={new Date(assessmentResult.created_at).toLocaleDateString()} note="Submission timestamp" />
           </div>
 
