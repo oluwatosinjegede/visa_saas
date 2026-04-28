@@ -990,7 +990,7 @@ export function PaymentPage({ navigate }) {
       })
 
       if (result?.authorization_url) {
-        window.location.href = `${result.authorization_url}?reference=${encodeURIComponent(result.reference)}&plan=${encodeURIComponent(selectedPlan)}`
+        window.location.href = result.authorization_url
         return
       }
 
@@ -1030,7 +1030,7 @@ export function PaymentPage({ navigate }) {
   )
 }
 
-export function PaymentSuccessPage() {
+export function PaymentSuccessPage({ navigate = () => {} }) {
   const { accessToken } = useAuth()
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
@@ -1039,7 +1039,14 @@ export function PaymentSuccessPage() {
   React.useEffect(() => {
     let ignore = false
     const search = new URLSearchParams(window.location.search)
-    const reference = search.get('reference')
+    const reference = search.get('reference') || search.get('trxref')
+    const status = (search.get('status') || '').toLowerCase()
+    const hasFailedStatus = ['cancelled', 'failed', 'abandoned'].includes(status)
+
+    if (hasFailedStatus) {
+      navigate(routes.paymentFailed)
+      return undefined
+    }
 
     if (!accessToken || !reference) {
       setLoading(false)

@@ -12,6 +12,7 @@ export const routes = {
   jobRelocation: '/job-relocation',
   pricing: '/pricing',
   payment: '/payment',
+  paymentCallback: '/payment/callback',
   paymentSuccess: '/payment-success',
   paymentFailed: '/payment-failed',
   profile: '/profile',
