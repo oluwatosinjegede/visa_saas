@@ -1,3 +1,5 @@
+import httpx
+from django.conf import settings
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -93,11 +95,52 @@ class InitializePaymentView(APIView):
                 reference=reference,
                 status="pending",
             )
+        paystack_payload = {
+            "email": request.user.email,
+            "amount": plan_pricing["amount_kobo"],
+            "reference": reference,
+            "callback_url": settings.PAYSTACK_CALLBACK_URL,
+            "currency": settings.PAYSTACK_CURRENCY,
+            "metadata": {"user_id": request.user.id, "plan": plan},
+        }
+        paystack_headers = {
+            "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
+            "Content-Type": "application/json",
+        }
+
+        try:
+            response = httpx.post(
+                f"{settings.PAYSTACK_BASE_URL}/transaction/initialize",
+                json=paystack_payload,
+                headers=paystack_headers,
+                timeout=20,
+            )
+            response.raise_for_status()
+            response_data = response.json()
+        except (httpx.HTTPError, ValueError):
+            return Response(
+                {
+                    "message": "Payment initialization failed",
+                    "errors": {"provider": ["Unable to initialize transaction with Paystack."]},
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        authorization_url = response_data.get("data", {}).get("authorization_url")
+        if not authorization_url:
+            return Response(
+                {
+                    "message": "Payment initialization failed",
+                    "errors": {"provider": ["Paystack did not return an authorization URL."]},
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
 
         return Response(
             {
                 "message": "Payment initialized successfully",
-                "authorization_url": f"https://paystack.com/pay/{reference}",
+                "authorization_url": authorization_url,
                 "reference": reference,
                 "plan": plan,
             },
