@@ -157,23 +157,3 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 
-# =========================
-# PAYSTACK CONFIGURATION
-# =========================
-
-PAYSTACK_PUBLIC_KEY = os.getenv("PAYSTACK_PUBLIC_KEY", "")
-PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY", "")
-PAYSTACK_CALLBACK_URL = os.getenv(
-    "PAYSTACK_CALLBACK_URL",
-    "https://visapilot-frontend.up.railway.app/payment/callback",
-)
-PAYSTACK_BASE_URL = os.getenv("PAYSTACK_BASE_URL", "https://api.paystack.co")
-
-PAYSTACK_CURRENCY = os.getenv("PAYSTACK_CURRENCY", "NGN")
-
-# Optional: webhook secret/signature validation
-PAYSTACK_WEBHOOK_SECRET = os.getenv("PAYSTACK_WEBHOOK_SECRET", PAYSTACK_SECRET_KEY)
-
-# Safety check in production
-if not DEBUG and not PAYSTACK_SECRET_KEY:
-    raise RuntimeError("PAYSTACK_SECRET_KEY is required in production.")

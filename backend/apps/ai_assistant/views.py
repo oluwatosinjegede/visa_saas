@@ -4,11 +4,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .serializers import RefusalAnalysisSerializer, SOPGeneratorSerializer
+from .services import AIHealthService
 
 
 class HealthView(APIView):
     def get(self, request):
-        return Response({"module": "ai_assistant", "status": "ok"})
+        return Response({"module": "ai_assistant", "status": "ok", "ai": AIHealthService.status()})
     
 
 

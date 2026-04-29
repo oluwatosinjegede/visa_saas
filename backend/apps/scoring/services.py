@@ -1,8 +1,16 @@
 import json
+import logging
 import os
 from typing import Any
 
 from openai import OpenAI
+
+logger = logging.getLogger(__name__)
+
+OPENAI_TIMEOUT_SECONDS = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "20"))
+OPENAI_MAX_RETRIES = int(os.getenv("OPENAI_MAX_RETRIES", "2"))
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+OPENAI_FALLBACK_MODEL = os.getenv("OPENAI_FALLBACK_MODEL", "gpt-4.1-mini")
 
 
 def get_openai_client():
@@ -11,7 +19,8 @@ def get_openai_client():
     if not api_key:
         return None
 
-    return OpenAI(api_key=api_key)
+    return OpenAI(api_key=api_key, timeout=OPENAI_TIMEOUT_SECONDS, max_retries=OPENAI_MAX_RETRIES)
+
 
 def _safe_int(value: Any, default: int = 0) -> int:
     try:
@@ -39,7 +48,7 @@ def _approval_band_from_refusal_probability(refusal_probability: float) -> str:
     return "Very Low"
 
 
-def _build_heuristic_prediction(score: float, refusal_risks: list[str]) -> dict[str, Any]:
+def _build_heuristic_prediction(score: float, refusal_risks: list[str], reason: str) -> dict[str, Any]:
     critical_terms = {
         "deportation",
         "overstay",
@@ -51,56 +60,127 @@ def _build_heuristic_prediction(score: float, refusal_risks: list[str]) -> dict[
     refusal_probability = max(5.0, min(95.0, round((100 - score) + (critical_hits * 8), 2)))
 
     return {
+        "provider": "heuristic",
         "refusal_probability": refusal_probability,
         "risk_category": "High" if refusal_probability >= 60 else "Medium" if refusal_probability >= 35 else "Low",
-        "key_drivers": refusal_risks[:5],
-        "narrative": "Heuristic fallback was used because AI refusal prediction is unavailable.",
+        "recommendations": refusal_risks[:5],
+        "narrative": "Heuristic fallback used after AI failure.",
+        "diagnostics": reason,
     }
+
+
+def _coerce_prediction_payload(data: dict[str, Any], refusal_risks: list[str]) -> dict[str, Any]:
+    refusal_probability = max(0.0, min(100.0, float(data.get("refusal_probability", 50))))
+    recommendations = data.get("recommendations")
+    if not isinstance(recommendations, list):
+        recommendations = refusal_risks[:5]
+
+    return {
+        "provider": "openai",
+        "refusal_probability": round(refusal_probability, 2),
+        "risk_category": data.get("risk_category") or (
+            "High" if refusal_probability >= 60 else "Medium" if refusal_probability >= 35 else "Low"
+        ),
+        "recommendations": recommendations[:8],
+        "narrative": data.get("narrative") or "AI-generated refusal prediction.",
+        "diagnostics": data.get("diagnostics") or "",
+    }
+
+
+def _request_ai_refusal_prediction(client: OpenAI, questionnaire: dict[str, Any], refusal_risks: list[str], score: float):
+    response = client.responses.create(
+        model=OPENAI_MODEL,
+        timeout=OPENAI_TIMEOUT_SECONDS,
+        input=[
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            "You are an immigration risk analyst. Return JSON only with keys: "
+                            "refusal_probability (number 0-100), risk_category, recommendations (array), narrative, diagnostics."
+                        ),
+                    }
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            f"Base score: {score}. Preliminary refusal risks: {refusal_risks}. "
+                            f"Questionnaire payload: {json.dumps(questionnaire)[:6000]}"
+                        ),
+                    }
+                ],
+            },
+        ],
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": "refusal_prediction",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "refusal_probability": {"type": "number"},
+                        "risk_category": {"type": "string"},
+                        "recommendations": {"type": "array", "items": {"type": "string"}},
+                        "narrative": {"type": "string"},
+                        "diagnostics": {"type": "string"},
+                    },
+                    "required": ["refusal_probability", "risk_category", "recommendations", "narrative", "diagnostics"],
+                },
+            }
+        },
+    )
+    return json.loads(response.output_text or "{}")
 
 
 def predict_refusal_with_ai(questionnaire: dict[str, Any], refusal_risks: list[str], score: float):
     client = get_openai_client()
 
     if client is None:
-        return _build_heuristic_prediction(score, refusal_risks)
+        return _build_heuristic_prediction(score, refusal_risks, "OPENAI_API_KEY missing.")
 
     try:
-        response = client.chat.completions.create(
-        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-        temperature=0.2,
-        response_format={"type": "json_object"},
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are an immigration risk analyst. Return only JSON with keys: "
-                    "refusal_probability (number 0-100), risk_category, key_drivers (array), narrative."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"Base score: {score}. Preliminary refusal risks: {refusal_risks}. "
-                    f"Questionnaire payload: {json.dumps(questionnaire)[:6000]}"
-                ),
-            },
-        ],
-    )
-
-        content = response.choices[0].message.content or "{}"
-
-        data = json.loads(content)
-        refusal_probability = max(0.0, min(100.0, float(data.get("refusal_probability", 50))))
-        key_drivers = data.get("key_drivers") if isinstance(data.get("key_drivers"), list) else refusal_risks[:5]
-        return {
-            "refusal_probability": round(refusal_probability, 2),
-            "risk_category": data.get("risk_category") or ("High" if refusal_probability >= 60 else "Medium" if refusal_probability >= 35 else "Low"),
-            "key_drivers": key_drivers,
-            "narrative": data.get("narrative") or "AI-generated refusal prediction.",
-        }
+        data = _request_ai_refusal_prediction(client, questionnaire, refusal_risks, score)
+        return _coerce_prediction_payload(data, refusal_risks)
     except Exception:
-        return _build_heuristic_prediction(score, refusal_risks)
+        logger.exception("AI refusal prediction failed")
 
+    if OPENAI_FALLBACK_MODEL:
+        try:
+            response = client.chat.completions.create(
+                model=OPENAI_FALLBACK_MODEL,
+                temperature=0.2,
+                timeout=OPENAI_TIMEOUT_SECONDS,
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": "Return JSON with refusal_probability, risk_category, recommendations, narrative, diagnostics."},
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Base score: {score}. Preliminary refusal risks: {refusal_risks}. "
+                            f"Questionnaire payload: {json.dumps(questionnaire)[:4000]}"
+                        ),
+                    },
+                ],
+            )
+            data = json.loads(response.choices[0].message.content or "{}")
+            payload = _coerce_prediction_payload(data, refusal_risks)
+            payload["provider"] = "openai_fallback"
+            return payload
+        except Exception:
+            logger.exception("AI refusal prediction failed")
+
+    return _build_heuristic_prediction(score, refusal_risks, "Primary and fallback OpenAI calls failed.")
+
+
+# rest unchanged
 
 def assess_questionnaire(questionnaire: dict[str, Any]) -> dict[str, Any]:
     score = 100.0

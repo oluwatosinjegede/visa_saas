@@ -131,11 +131,16 @@ class VisaAssessmentView(APIView):
             recommendations=assessment_result["recommendations"],
             ai_refusal_prediction=assessment_result["ai_refusal_prediction"],
         )
+        response_data = VisaAssessmentResultSerializer(submission).data
+        response_data["ai_prediction"] = submission.ai_refusal_prediction
+        response_data["refusal_probability"] = submission.ai_refusal_prediction.get("refusal_probability")
+        response_data["risk_category"] = submission.ai_refusal_prediction.get("risk_category", submission.refusal_risk_level)
+        response_data["ai_diagnostics"] = submission.ai_refusal_prediction.get("diagnostics", "")
 
         return Response(
             {
                 "message": "Visa assessment complete",
-                "data": VisaAssessmentResultSerializer(submission).data,
+                "data": response_data,
             },
             status=status.HTTP_200_OK,
         )
